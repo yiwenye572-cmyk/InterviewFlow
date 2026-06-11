@@ -1,0 +1,18 @@
+{
+  "id": "product_manager",
+  "label": "产品经理",
+  "default_competencies": [
+    "需求分析",
+    "用户洞察",
+    "跨团队协作",
+    "数据驱动决策",
+    "产品规划",
+    "沟通表达"
+  ],
+  "phase_strategy": ["opening", "behavioral", "project", "behavioral"],
+  "match_dimension_labels": {
+    "skill_fit": "产品能力",
+    "experience_fit": "行业经验",
+    "domain_fit": "业务理解"
+  }
+}

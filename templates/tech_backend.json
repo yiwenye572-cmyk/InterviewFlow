@@ -1,0 +1,18 @@
+{
+  "id": "tech_backend",
+  "label": "后端/技术岗",
+  "default_competencies": [
+    "系统设计",
+    "编程语言与框架",
+    "数据库与缓存",
+    "项目落地与协作",
+    "问题排查",
+    "代码质量"
+  ],
+  "phase_strategy": ["opening", "technical", "project", "behavioral"],
+  "match_dimension_labels": {
+    "skill_fit": "技能匹配",
+    "experience_fit": "经验匹配",
+    "domain_fit": "领域匹配"
+  }
+}

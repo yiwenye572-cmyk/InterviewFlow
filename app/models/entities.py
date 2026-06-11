@@ -14,6 +14,8 @@ class Job(Base):
     filename: Mapped[str] = mapped_column(String(512))
     raw_text: Mapped[str] = mapped_column(Text)
     structured_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    template_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rubric_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     resumes: Mapped[list["Resume"]] = relationship(back_populates="job")
@@ -32,6 +34,7 @@ class Resume(Base):
     parse_quality: Mapped[str] = mapped_column(String(32), default="good")
     structured_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assessment_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     job: Mapped["Job"] = relationship(back_populates="resumes")
@@ -87,6 +90,9 @@ class InterviewSession(Base):
     followup_queue_json: Mapped[str] = mapped_column(Text, default="[]")
     live_assessment_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     topic_plan_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    followup_streak: Mapped[int] = mapped_column(Integer, default=0)
+    current_topic: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    competency_status_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

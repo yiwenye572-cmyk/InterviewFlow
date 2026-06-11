@@ -78,6 +78,30 @@ class AnswerEvaluation(BaseModel):
     notes: str = ""
     competency_signal: str = ""
     partial_score: int = Field(default=60, ge=0, le=100)
+    communication_signal: str = "clear"
+    evidence_density: str = "medium"
+
+
+class ScoreReviewResult(BaseModel):
+    adjusted_partial_score: int = Field(ge=0, le=100)
+    confidence: float = Field(default=0.7, ge=0.0, le=1.0)
+    calibration_notes: str = ""
+    evidence_quotes: list[str] = Field(default_factory=list)
+    adjusted_answer_quality: str = "adequate"
+    adjusted_communication_signal: str = "clear"
+
+
+class RubricProfile(BaseModel):
+    criteria: list[dict] = Field(default_factory=list)
+    summary: str = ""
+
+
+class JobTemplate(BaseModel):
+    id: str
+    label: str = ""
+    default_competencies: list[str] = Field(default_factory=list)
+    phase_strategy: list[str] = Field(default_factory=list)
+    match_dimension_labels: dict[str, str] = Field(default_factory=dict)
 
 
 class PersonaProfile(BaseModel):
@@ -104,6 +128,8 @@ class LiveAssessment(BaseModel):
     observed_strengths: list[str] = Field(default_factory=list)
     observed_risks: list[str] = Field(default_factory=list)
     last_updated: str = ""
+    score_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
+    calibration_summary: str = ""
 
 
 class InterviewReport(BaseModel):
@@ -115,3 +141,8 @@ class InterviewReport(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     next_round_focus: list[str] = Field(default_factory=list)
     overall_recommendation: str = "hold"
+    dimension_scores: dict[str, int] = Field(default_factory=dict)
+    dimension_summaries: dict[str, str] = Field(default_factory=dict)
+    hiring_decision_rationale: str = ""
+    live_snapshot: dict | None = None
+    score_confidence: float = Field(default=0.7, ge=0.0, le=1.0)

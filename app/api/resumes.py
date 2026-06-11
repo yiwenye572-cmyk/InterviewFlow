@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -28,7 +28,22 @@ def get_resume_structured(resume_id: int, db: Session = Depends(get_db)):
         "parse_quality": resume.parse_quality,
         "structured": structured,
         "summary": resume.summary_text,
+        "assessment_notes": resume.assessment_notes,
     }
+
+
+@router.post("/{resume_id}/assessment-notes")
+def set_assessment_notes(
+    resume_id: int,
+    notes: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    resume = db.get(Resume, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    resume.assessment_notes = notes.strip()[:8000]
+    db.commit()
+    return {"resume_id": resume_id, "ok": True}
 
 
 @router.post("", response_model=ResumeUploadResponse)

@@ -16,13 +16,19 @@ def generate_interview_report(
     *,
     evaluations_log: list[dict] | None = None,
     live_assessment: dict | None = None,
+    rubric_context: str = "",
 ) -> InterviewReport:
     settings = get_settings()
     system = (PROMPT_DIR / "generate_report.txt").read_text(encoding="utf-8")
+    if rubric_context:
+        system += f"\n\nCompany rubric:\n{rubric_context[:3000]}"
     transcript = _format_transcript(messages)
     weak_rounds = [
         e for e in (evaluations_log or [])
-        if e.get("answer_quality") == "weak" or e.get("resume_mismatch") or e.get("off_topic")
+        if e.get("answer_quality") == "weak"
+        or e.get("resume_mismatch")
+        or e.get("off_topic")
+        or e.get("communication_signal") in ("vague", "evasive")
     ]
     messages_payload = [
         {"role": "system", "content": system},
@@ -43,6 +49,8 @@ def generate_interview_report(
     draft = structured_completion(
         messages_payload, InterviewReport, model=settings.qwen_model, retries=2
     )
+    if live_assessment and not draft.live_snapshot:
+        draft.live_snapshot = live_assessment
     return _reflect_report(job_text, transcript, draft)
 
 
@@ -51,6 +59,10 @@ def _reflect_report(
 ) -> InterviewReport:
     settings = get_settings()
     system = (PROMPT_DIR / "report_reflection.txt").read_text(encoding="utf-8")
+    system += (
+        "\n\nAlso validate dimension_scores and hiring_decision_rationale "
+        "against transcript evidence. Include all schema fields."
+    )
     messages = [
         {"role": "system", "content": system},
         {

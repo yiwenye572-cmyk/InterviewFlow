@@ -94,6 +94,8 @@ class InterviewStatusResponse(BaseModel):
     pending_action: str | None = None
     competencies_covered: list[str] = Field(default_factory=list)
     competencies_planned: list[str] = Field(default_factory=list)
+    competency_status: dict[str, str] = Field(default_factory=dict)
+    followup_streak: int = 0
 
 
 class InterviewMessagesResponse(BaseModel):

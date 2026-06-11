@@ -61,3 +61,16 @@ def migrate_db() -> None:
     _add_column_if_missing(
         "interview_sessions", "topic_plan_json", "topic_plan_json TEXT"
     )
+    _add_column_if_missing(
+        "interview_sessions", "followup_streak", "followup_streak INTEGER DEFAULT 0"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "current_topic", "current_topic VARCHAR(512)"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "competency_status_json",
+        "competency_status_json TEXT DEFAULT '{}'",
+    )
+    _add_column_if_missing("jobs", "template_id", "template_id VARCHAR(64)")
+    _add_column_if_missing("jobs", "rubric_json", "rubric_json TEXT")
+    _add_column_if_missing("resumes", "assessment_notes", "assessment_notes TEXT")

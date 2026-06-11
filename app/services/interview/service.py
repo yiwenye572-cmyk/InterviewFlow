@@ -22,6 +22,8 @@ from app.services.interview.nodes import (
     stream_question,
 )
 from app.services.interview.report import compress_conversation_summary, generate_interview_report
+from app.services.job_templates import infer_template_id, load_template
+from app.services.rubric_parser import rubric_to_context
 
 _init_graph = build_init_graph()
 _post_answer_graph = build_post_answer_graph()
@@ -39,6 +41,15 @@ class InterviewService:
             raise ValueError("Invalid job_id or resume_id")
 
         competencies_planned, followup_queue = self._load_a_layer_seeds(job.id, resume.id, job)
+        template = load_template(job.template_id) or load_template(
+            infer_template_id(job.title, job.raw_text)
+        )
+        if template and not competencies_planned:
+            competencies_planned = template.default_competencies[:12]
+        if template and not job.template_id:
+            job.template_id = template.id
+
+        competency_status = {c: "uncovered" for c in competencies_planned if c}
 
         session = InterviewSession(
             job_id=job_id,
@@ -49,6 +60,7 @@ class InterviewService:
             phase="opening",
             competencies_planned_json=json.dumps(competencies_planned, ensure_ascii=False),
             followup_queue_json=json.dumps(followup_queue, ensure_ascii=False),
+            competency_status_json=json.dumps(competency_status, ensure_ascii=False),
         )
         self.db.add(session)
         self.db.flush()
@@ -120,6 +132,10 @@ class InterviewService:
                 yield chunk
             self._save_message(session.id, "assistant", full)
             session.pending_action = "wait_answer"
+            if not session.current_topic:
+                session.current_topic = InterviewService._last_assistant_from_messages(
+                    self._load_messages(session.id)
+                )
             self.db.commit()
             return
 
@@ -132,7 +148,12 @@ class InterviewService:
             session.pending_action = "wait_answer"
             plan = json.loads(session.topic_plan_json or "{}")
             target = plan.get("competency_target", "")
+            session.current_topic = plan.get("next_topic") or target or session.current_topic
             if target:
+                status = json.loads(session.competency_status_json or "{}")
+                if target not in status:
+                    status[target] = "uncovered"
+                session.competency_status_json = json.dumps(status, ensure_ascii=False)
                 covered = json.loads(session.competencies_covered_json or "[]")
                 if target not in covered:
                     covered.append(target)
@@ -192,6 +213,7 @@ class InterviewService:
             risk_notes,
             evaluations_log=evaluations_log,
             live_assessment=live,
+            rubric_context=self._rubric_context(job),
         )
         session.report_json = report.model_dump_json(ensure_ascii=False)
         session.status = "completed"
@@ -219,6 +241,8 @@ class InterviewService:
             "pending_action": session.pending_action,
             "competencies_covered": json.loads(session.competencies_covered_json or "[]"),
             "competencies_planned": json.loads(session.competencies_planned_json or "[]"),
+            "competency_status": json.loads(session.competency_status_json or "{}"),
+            "followup_streak": session.followup_streak,
         }
 
     def get_messages(self, session_id: int) -> list[dict[str, str]]:
@@ -246,6 +270,13 @@ class InterviewService:
         session.followup_queue_json = json.dumps(
             state.get("followup_queue", []), ensure_ascii=False
         )
+        session.followup_streak = state.get("followup_streak", 0)
+        if state.get("current_topic"):
+            session.current_topic = state["current_topic"]
+        if state.get("competency_status"):
+            session.competency_status_json = json.dumps(
+                state["competency_status"], ensure_ascii=False
+            )
         if state.get("live_assessment"):
             session.live_assessment_json = json.dumps(
                 state["live_assessment"], ensure_ascii=False
@@ -324,6 +355,11 @@ class InterviewService:
         structured = self._parse_structured(resume)
         messages = self._load_messages(session.id)
         a_layer_brief = self._build_a_layer_brief(job.id, resume.id)
+        if resume.assessment_notes:
+            a_layer_brief += (
+                f"\n\nCandidate assessment notes (for hiring context):\n"
+                f"{resume.assessment_notes[:1500]}"
+            )
         live = None
         if session.live_assessment_json:
             try:
@@ -358,13 +394,33 @@ class InterviewService:
             evaluations_log=json.loads(session.evaluations_log_json or "[]"),
             competencies_planned=json.loads(session.competencies_planned_json or "[]"),
             competencies_covered=json.loads(session.competencies_covered_json or "[]"),
+            competency_status=json.loads(session.competency_status_json or "{}"),
             followup_queue=json.loads(session.followup_queue_json or "[]"),
+            followup_streak=session.followup_streak or 0,
+            current_topic=session.current_topic or "",
             phase=session.phase or "opening",
             live_assessment=live,
             topic_plan=topic_plan,
             last_evaluation=last_eval,
             a_layer_context=a_layer_brief,
+            rubric_context=self._rubric_context(job),
         )
+
+    def _rubric_context(self, job: Job) -> str:
+        if not job.rubric_json:
+            return ""
+        try:
+            data = json.loads(job.rubric_json)
+            return json.dumps(data, ensure_ascii=False)
+        except Exception:
+            return job.rubric_json[:3000]
+
+    @staticmethod
+    def _last_assistant_from_messages(messages: list[dict[str, str]]) -> str:
+        for m in reversed(messages):
+            if m["role"] == "assistant":
+                return m["content"][:200]
+        return ""
 
     def _build_a_layer_brief(self, job_id: int, resume_id: int) -> str:
         screening = (

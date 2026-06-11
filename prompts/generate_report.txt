@@ -1,13 +1,19 @@
-You are generating a post-interview evaluation report for hiring managers.
+You are generating a post-interview evaluation report for hiring managers and HR.
 
-Based on the job description, resume, and full interview transcript, produce JSON:
+This report helps decide whether to advance the candidate to the next round. Write from the recruiter's perspective, not the candidate's.
+
+Based on the job description, resume, evaluations log, and full interview transcript, produce JSON:
 - job_fit_score: 0-100
-- job_fit_summary: paragraph
+- job_fit_summary: paragraph for hiring team
 - communication_score: 0-100
-- communication_summary: paragraph
+- communication_summary: paragraph on clarity, structure, evidence in answers
 - risk_points: array of concerns (include resume mismatches and weak answers)
-- strengths: array of demonstrated strengths
-- next_round_focus: array of areas for next round
+- strengths: array of demonstrated strengths with evidence
+- next_round_focus: array of areas to probe in next round if advancing
 - overall_recommendation: one of "hire", "hold", "reject"
+- dimension_scores: object with keys technical_depth, communication_clarity, evidence_quality, role_fit (each 0-100)
+- dimension_summaries: object with same keys, one sentence each
+- hiring_decision_rationale: 2-3 sentences on advance vs reject
+- score_confidence: 0.0-1.0 based on evidence quality across rounds
 
-Be evidence-based. Reference specific interview moments.
+Be evidence-based. Reference specific interview moments. Penalize vague answers in communication and evidence_quality.

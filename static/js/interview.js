@@ -68,7 +68,7 @@ function renderLiveAssessment(live) {
       <h4>潜在风险</h4>
       <ul>${(live.observed_risks || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
     </div>
-    <p class="live-updated">更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
+    <p class="live-updated">置信度：${live.score_confidence != null ? (live.score_confidence * 100).toFixed(0) + "%" : "—"} · 更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
 }
 
 function escapeHtml(text) {
@@ -86,10 +86,14 @@ function updateMeta(status) {
     roundCount = status.round_count;
     document.getElementById("meta-round").textContent = `轮次：${roundCount}`;
   }
-  const planned = status.competencies_planned?.length || 0;
-  const covered = status.competencies_covered?.length || 0;
+  const statusMap = status.competency_status || {};
+  const counts = { covered: 0, at_risk: 0, uncovered: 0 };
+  Object.values(statusMap).forEach((v) => {
+    if (counts[v] !== undefined) counts[v]++;
+  });
+  const total = Object.keys(statusMap).length || status.competencies_planned?.length || 0;
   document.getElementById("meta-competencies").textContent =
-    `考察点：${covered}/${planned}`;
+    `考察点：已验证 ${counts.covered} / 存疑 ${counts.at_risk} / 未覆盖 ${counts.uncovered || Math.max(0, total - counts.covered - counts.at_risk)}`;
 }
 
 async function refreshStatus() {
