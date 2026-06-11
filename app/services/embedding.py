@@ -1,4 +1,3 @@
-import hashlib
 from functools import lru_cache
 
 import chromadb
@@ -76,14 +75,14 @@ def semantic_similarity(job_id: int, resume_id: int, resume_text: str) -> float:
     job_doc_id = _doc_id("job", job_id)
     try:
         job_data = collection.get(ids=[job_doc_id], include=["embeddings"])
-        job_embedding = job_data["embeddings"][0]
+        embeddings = job_data.get("embeddings") or []
+        if not embeddings or embeddings[0] is None:
+            return 50.0
+        job_embedding = [float(x) for x in embeddings[0]]
     except Exception:
         return 50.0
 
-    if not job_embedding:
-        return 50.0
-
-    resume_embedding = _embed_texts([resume_text[:8000]])[0]
+    resume_embedding = [float(x) for x in _embed_texts([resume_text[:8000]])[0]]
     # Cosine similarity for normalized vectors
     dot = sum(a * b for a, b in zip(job_embedding, resume_embedding))
     norm_a = sum(a * a for a in job_embedding) ** 0.5

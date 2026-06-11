@@ -106,7 +106,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 4. 混合匹配分
 - 语义分（Chroma cosine × 40%）+ LLM rubric 分（× 60%）
-- 双阈值：`final_score >= 60` 且 `recommend_interview=true` 才可进入面试
+- 双阈值：`final_score >= 60` 且 `recommend_interview=true` 标记为「推荐面试」；未推荐仍可进入模拟面试体验 B 层 Agent
 
 ## Demo 视频脚本（≥2 分钟）
 

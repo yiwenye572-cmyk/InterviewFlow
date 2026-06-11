@@ -21,13 +21,12 @@ async function loadResults() {
     }
 
     const rows = data.results.map((r) => {
-      const badge = r.can_interview
+      const badge = r.recommend_interview
         ? '<span class="badge badge-success">推荐面试</span>'
         : '<span class="badge badge-muted">暂不推荐</span>';
       const reasons = r.reasons.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
-      const interviewBtn = r.can_interview
-        ? `<button class="btn btn-primary btn-sm start-interview" data-resume-id="${r.resume_id}">开始面试</button>`
-        : `<button class="btn btn-secondary" disabled>不可面试</button>`;
+      const btnClass = r.recommend_interview ? "btn-primary" : "btn-secondary";
+      const interviewBtn = `<button class="btn ${btnClass} btn-sm start-interview" data-resume-id="${r.resume_id}">模拟面试</button>`;
 
       return `
         <tr>

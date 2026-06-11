@@ -3,7 +3,6 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
 from app.database import get_db
 from app.models.entities import Job, Resume, ScreeningResult
 from app.schemas.api import ScreeningResultItem, ScreeningResultsResponse
@@ -30,7 +29,6 @@ def get_screening_results(job_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    settings = get_settings()
     resumes = db.query(Resume).filter(Resume.job_id == job_id).all()
     items: list[ScreeningResultItem] = []
 
@@ -50,10 +48,6 @@ def get_screening_results(job_id: int, db: Session = Depends(get_db)):
         if screening:
             reasons = json.loads(screening.reasons_json or "[]")
             gaps = json.loads(screening.gaps_json or "[]")
-            can_interview = (
-                screening.recommend_interview
-                and screening.final_score >= settings.match_threshold
-            )
             items.append(
                 ScreeningResultItem(
                     resume_id=resume.id,
@@ -66,7 +60,7 @@ def get_screening_results(job_id: int, db: Session = Depends(get_db)):
                     reasons=reasons,
                     gaps=gaps,
                     recommend_interview=screening.recommend_interview,
-                    can_interview=can_interview,
+                    can_interview=True,
                 )
             )
         else:
@@ -82,7 +76,7 @@ def get_screening_results(job_id: int, db: Session = Depends(get_db)):
                     reasons=["Not screened yet"],
                     gaps=[],
                     recommend_interview=False,
-                    can_interview=False,
+                    can_interview=True,
                 )
             )
 
