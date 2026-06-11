@@ -45,6 +45,14 @@ def create_app() -> FastAPI:
     async def report_page():
         return FileResponse(STATIC_DIR / "report.html")
 
+    @app.get("/history.html")
+    async def history_page():
+        return FileResponse(STATIC_DIR / "history.html")
+
+    @app.get("/job.html")
+    async def job_page():
+        return FileResponse(STATIC_DIR / "job.html")
+
     @app.get("/health")
     async def health():
         return {"status": "ok"}

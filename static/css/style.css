@@ -559,6 +559,32 @@ th {
   color: #fff;
 }
 
+.timeline-item {
+  border-left: 3px solid var(--primary);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  background: #f8fafc;
+  font-size: 0.85rem;
+}
+.timeline-item.weak { border-left-color: var(--danger); }
+.adjustment-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+}
+.delta {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+.delta.positive { background: #dcfce7; color: var(--success); }
+.delta.negative { background: #fee2e2; color: var(--danger); }
+.delta.neutral { background: #e2e8f0; color: var(--muted); }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f1f5f9; }
+
 @media (max-width: 640px) {
   .container { padding: 1rem; }
   table { font-size: 0.8rem; }

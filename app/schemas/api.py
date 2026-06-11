@@ -113,3 +113,40 @@ class ReportResponse(BaseModel):
     status: str
     report: dict | None = None
     evaluations_log: list[dict] | None = None
+    score_timeline: list[dict] | None = None
+
+
+class JobListItem(BaseModel):
+    id: int
+    title: str
+    filename: str
+    created_at: str | None = None
+    resume_count: int = 0
+    interview_count: int = 0
+    completed_interview_count: int = 0
+
+
+class InterviewSummaryItem(BaseModel):
+    session_id: int
+    resume_id: int
+    candidate_name: str
+    persona: str
+    interview_mode: str = "adaptive"
+    status: str
+    round_count: int = 0
+    created_at: str | None = None
+    report_summary: str | None = None
+    job_fit_score: int | None = None
+    communication_score: int | None = None
+    overall_recommendation: str | None = None
+
+
+class JobOverviewResponse(BaseModel):
+    job: JobListItem
+    jd_summary: str = ""
+    jd_structured: dict | None = None
+    interviews: list[InterviewSummaryItem] = Field(default_factory=list)
+
+
+class JobListResponse(BaseModel):
+    jobs: list[JobListItem] = Field(default_factory=list)

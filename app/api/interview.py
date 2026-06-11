@@ -18,6 +18,7 @@ from app.schemas.api import (
     ReportResponse,
 )
 from app.services.interview.service import InterviewService
+from app.services.interview.score_trace import build_score_timeline
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
 
@@ -162,11 +163,13 @@ def end_interview(session_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     report = json.loads(session.report_json) if session.report_json else None
     evaluations_log = json.loads(session.evaluations_log_json or "[]")
+    timeline = build_score_timeline(evaluations_log) if evaluations_log else None
     return ReportResponse(
         session_id=session.id,
         status=session.status,
         report=report,
         evaluations_log=evaluations_log if report else None,
+        score_timeline=timeline if report else None,
     )
 
 
@@ -179,9 +182,11 @@ def get_report(session_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Session not found")
     report = json.loads(session.report_json) if session.report_json else None
     evaluations_log = json.loads(session.evaluations_log_json or "[]")
+    timeline = build_score_timeline(evaluations_log) if evaluations_log else None
     return ReportResponse(
         session_id=session.id,
         status=session.status,
         report=report,
         evaluations_log=evaluations_log if report else None,
+        score_timeline=timeline if report else None,
     )

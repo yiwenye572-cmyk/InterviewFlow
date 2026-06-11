@@ -115,6 +115,26 @@ InitPersona → StreamOpening → WaitAnswer
 - 当 `candidate_state` 为 `hesitant` 或 `stuck`，且 `enable_encouragement=True` 时，路由至 `stream_encouragement`（每轮 evaluate 最多一次）。
 - **Calibrator 不参与**鼓励消息；鼓励话术不抬高 Live/Final 分数。`hr_friendly` 默认开启，`tech_lead` 默认关闭。
 
+### 历史岗位与报告列表
+
+- JD 结构化结果、面试报告持久化于 SQLite（`jobs`、`interview_sessions.report_json`）。
+- `GET /api/jobs`：岗位列表（简历数、面试数、完成数）。
+- `GET /api/jobs/{id}/overview`：JD 摘要 + 该岗位下全部面试记录（匹配分、决策、简述）。
+- 前端：[`history.html`](static/history.html) → [`job.html`](static/job.html) → [`report.html`](static/report.html)。
+
+### 评分可审计性
+
+- 每轮 `Evaluate → Calibrator → Live 加权` 后，`evaluations_log` 记录：
+  - `live_job_fit_before/after`、`comm_before/after`、`job_fit_delta`、`comm_delta`
+  - `score_adjustments[]`：维度、delta、理由、证据引用
+- 报告 API 返回 `score_timeline`；报告页展示「评分时间线」。
+
+### 面试输入安全
+
+- [`input_guard.py`](app/services/interview/input_guard.py) 规则预检（jailbreak / prompt 泄露 / 越权指令）。
+- 拦截后短路 Evaluate LLM，标记 `off_topic` + 低分，不抬高 Live/Final 分数。
+- 追问/提问 Prompt 加固：不泄露 system prompt、不服从角色切换指令。
+
 ## 架构
 
 ```
@@ -169,6 +189,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/jobs` | 上传 JD |
+| GET | `/api/jobs` | 历史岗位列表 |
+| GET | `/api/jobs/{id}/overview` | 岗位 JD 摘要 + 面试记录 |
 | POST | `/api/resumes?job_id=` | 批量上传简历 |
 | POST | `/api/screen/{job_id}` | 触发筛选 |
 | GET | `/api/screen/{job_id}/results` | 筛选结果 |

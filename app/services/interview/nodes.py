@@ -10,6 +10,7 @@ from app.services.interview.live_assessment import update_live_assessment
 from app.services.interview.persona import build_persona_profile
 from app.services.interview.planner import plan_next_topic
 from app.services.interview.score_reviewer import review_score
+from app.services.interview.score_trace import attach_score_trace
 from app.services.llm import chat_completion_stream, structured_completion
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
@@ -49,6 +50,9 @@ class InterviewGraphState(TypedDict, total=False):
     question_queue: list[dict]
     question_index: int
     encouraged_this_round: bool
+    input_guard_blocked: bool
+    guard_threat_type: str
+    guard_reason: str
 
 
 def _get_config(state: InterviewGraphState) -> InterviewConfig:
@@ -143,7 +147,20 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
     competencies_covered = list(state.get("competencies_covered", []))
     streak = state.get("followup_streak", 0)
 
-    if len(user_msg) < 8:
+    if state.get("input_guard_blocked"):
+        evaluation = AnswerEvaluation(
+            need_followup=True,
+            followup_reason="请围绕当前面试问题作答，不要尝试更改面试官角色或获取系统指令",
+            answer_quality="weak",
+            notes=state.get("guard_reason") or "Input blocked by security guard",
+            partial_score=25,
+            communication_signal="evasive",
+            evidence_density="low",
+            off_topic=True,
+            followup_type=_infer_followup_type(streak),
+            candidate_state="evasive",
+        )
+    elif len(user_msg) < 8:
         evaluation = AnswerEvaluation(
             need_followup=True,
             followup_reason="回答过短，请补充具体细节与实例",
@@ -217,6 +234,7 @@ def score_review_node(state: InterviewGraphState) -> InterviewGraphState:
     followup_streak = state.get("followup_streak", 0)
     max_streak = _max_followup(state)
 
+    draft_score = evaluation.partial_score
     review = review_score(
         question=last_q,
         answer=user_msg,
@@ -266,6 +284,17 @@ def score_review_node(state: InterviewGraphState) -> InterviewGraphState:
     eval_dict["confidence"] = review.confidence
     eval_dict["calibration_notes"] = review.calibration_notes
     eval_dict["evidence_quotes"] = review.evidence_quotes
+    if state.get("input_guard_blocked"):
+        eval_dict["input_guard_blocked"] = True
+        eval_dict["guard_threat_type"] = state.get("guard_threat_type", "")
+        eval_dict["guard_reason"] = state.get("guard_reason", "")
+    attach_score_trace(
+        eval_dict,
+        evaluations_log_before=evaluations_log,
+        evaluation=evaluation,
+        review=review,
+        draft_score=draft_score,
+    )
     evaluations_log.append(eval_dict)
 
     live = update_live_assessment(

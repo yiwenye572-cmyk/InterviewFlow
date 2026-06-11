@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.entities import Job
-from app.schemas.api import JobResponse
+from app.schemas.api import JobListResponse, JobOverviewResponse, JobResponse
 from app.services.document_parser import parse_document
+from app.services.history_service import HistoryService
 from app.services.job_templates import list_templates
 from app.services.rubric_parser import parse_rubric_text, rubric_to_context
 
@@ -26,6 +27,21 @@ def _guess_title(text: str, filename: str) -> str:
 @router.get("/templates")
 def get_job_templates():
     return {"templates": [t.model_dump() for t in list_templates()]}
+
+
+@router.get("", response_model=JobListResponse)
+def list_jobs(db: Session = Depends(get_db)):
+    service = HistoryService(db)
+    return JobListResponse(jobs=service.list_jobs())
+
+
+@router.get("/{job_id}/overview", response_model=JobOverviewResponse)
+def get_job_overview(job_id: int, db: Session = Depends(get_db)):
+    service = HistoryService(db)
+    overview = service.get_job_overview(job_id)
+    if not overview:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return overview
 
 
 @router.post("/{job_id}/rubric")

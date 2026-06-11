@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 招聘助手 - 历史岗位</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>历史岗位</h1>
+      <p>已解析 JD 与面试报告持久化于 SQLite</p>
+    </header>
+
+    <nav class="steps">
+      <span class="step">1. 上传</span>
+      <span class="step">2. 筛选</span>
+      <span class="step">3. 面试</span>
+      <span class="step">4. 报告</span>
+    </nav>
+
+    <div class="card">
+      <div class="actions" style="margin-top:0">
+        <a href="/" class="btn btn-secondary">返回首页</a>
+        <button id="refresh-btn" class="btn btn-primary">刷新</button>
+      </div>
+    </div>
+
+    <div id="jobs-container" class="card">
+      <p class="muted">加载中...</p>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/history.js"></script>
+</body>
+</html>

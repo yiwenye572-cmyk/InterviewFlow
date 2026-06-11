@@ -24,6 +24,7 @@ from app.services.interview.nodes import (
     stream_opening,
     stream_question,
 )
+from app.services.interview.input_guard import check_input
 from app.services.interview.report import compress_conversation_summary, generate_interview_report
 from app.services.job_templates import infer_template_id, load_template
 from app.services.rubric_parser import rubric_to_context
@@ -104,6 +105,12 @@ class InterviewService:
         self._save_message(session.id, "user", content)
         state = self._build_state(session, job, resume)
         state["last_user_message"] = content
+
+        guard = check_input(content)
+        if guard.blocked:
+            state["input_guard_blocked"] = True
+            state["guard_threat_type"] = guard.threat_type
+            state["guard_reason"] = guard.reason
 
         result = _post_answer_graph.invoke(state, config={"recursion_limit": 8})
         self._persist_state(session, result)
