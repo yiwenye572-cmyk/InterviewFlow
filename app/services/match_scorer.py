@@ -4,8 +4,14 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models.entities import Job, Resume, ScreeningResult
+from app.schemas.resume_structured import JDStructured, ResumeStructured
 from app.services.embedding import semantic_similarity, upsert_job_embedding, upsert_resume_embedding
-from app.services.resume_extractor import extract_resume_structured, score_resume_match
+from app.services.followup_generator import generate_followup_pack
+from app.services.resume_extractor import (
+    extract_jd_structured,
+    extract_resume_structured,
+    score_resume_match,
+)
 
 
 def screen_job(db: Session, job_id: int) -> list[ScreeningResult]:
@@ -13,83 +19,160 @@ def screen_job(db: Session, job_id: int) -> list[ScreeningResult]:
     if not job:
         raise ValueError(f"Job {job_id} not found")
 
-    upsert_job_embedding(job.id, job.raw_text)
+    job_structured = _ensure_jd_structured(db, job)
+    score_flags: list[str] = []
+
+    try:
+        upsert_job_embedding(job.id, job.raw_text)
+    except Exception:
+        score_flags.append("embedding_job_fallback")
+
     settings = get_settings()
     results: list[ScreeningResult] = []
 
     resumes = db.query(Resume).filter(Resume.job_id == job_id).all()
     for resume in resumes:
-        result = _screen_single_resume(db, job, resume, settings.match_threshold)
+        result = _screen_single_resume(
+            db, job, job_structured, resume, settings.match_threshold, score_flags
+        )
         results.append(result)
 
     db.commit()
     return results
 
 
-def _screen_single_resume(
-    db: Session, job: Job, resume: Resume, threshold: int
-) -> ScreeningResult:
-    structured = None
+def _ensure_jd_structured(db: Session, job: Job) -> JDStructured | None:
+    if job.structured_json:
+        try:
+            return JDStructured.model_validate_json(job.structured_json)
+        except Exception:
+            pass
     try:
-        structured = extract_resume_structured(resume.raw_text)
-        resume.structured_json = structured.model_dump_json(ensure_ascii=False)
-        resume.summary_text = structured.summary or _build_summary(structured)
-        resume.parse_status = "success"
+        structured = extract_jd_structured(job.raw_text)
+        job.structured_json = structured.model_dump_json(ensure_ascii=False)
+        if structured.title and job.title == "Untitled Job":
+            job.title = structured.title
+        db.flush()
+        return structured
     except Exception:
+        return None
+
+
+def _screen_single_resume(
+    db: Session,
+    job: Job,
+    job_structured: JDStructured | None,
+    resume: Resume,
+    threshold: int,
+    global_flags: list[str],
+) -> ScreeningResult:
+    score_flags = list(global_flags)
+    structured = None
+
+    if resume.parse_quality == "low" and len(resume.raw_text) < 100:
         resume.parse_status = "failed"
         resume.structured_json = None
         resume.summary_text = resume.raw_text[:2000]
+    elif resume.parse_quality == "scanned":
+        resume.parse_status = "failed"
+        resume.structured_json = None
+        resume.summary_text = resume.raw_text[:2000]
+    else:
+        try:
+            structured = extract_resume_structured(resume.raw_text)
+            resume.structured_json = structured.model_dump_json(ensure_ascii=False)
+            resume.summary_text = structured.summary or _build_summary(structured)
+            resume.parse_status = "success" if resume.parse_quality == "good" else "partial"
+        except Exception:
+            resume.parse_status = "failed"
+            resume.structured_json = None
+            resume.summary_text = resume.raw_text[:2000]
 
     db.flush()
 
-    semantic_score = semantic_similarity(
-        job.id, resume.id, resume.summary_text or resume.raw_text
-    )
-    if resume.parse_status == "success" and structured:
-        upsert_resume_embedding(resume.id, resume.summary_text or resume.raw_text)
+    try:
+        semantic_score = semantic_similarity(
+            job.id, resume.id, resume.summary_text or resume.raw_text
+        )
+    except Exception:
+        semantic_score = 50.0
+        score_flags.append("embedding_fallback")
+
+    dimension_scores: dict[str, int] = {}
+    decision_summary = ""
+    followups_json = "[]"
+    gaps: list[str] = []
+    reasons: list[str] = []
+
+    if resume.parse_status in ("success", "partial") and structured:
         try:
-            llm_result = score_resume_match(job.raw_text, structured, resume.raw_text)
+            upsert_resume_embedding(resume.id, resume.summary_text or resume.raw_text)
+        except Exception:
+            score_flags.append("embedding_resume_fallback")
+        try:
+            llm_result = score_resume_match(
+                job.raw_text, job_structured, structured, resume.raw_text
+            )
             llm_score = float(llm_result.score)
             reasons = llm_result.reasons
             gaps = llm_result.gaps
             recommend = llm_result.recommend_interview
+            dimension_scores = llm_result.dimension_scores or {}
+            decision_summary = llm_result.decision_summary or ""
         except Exception:
             llm_score = semantic_score
             reasons = ["LLM scoring unavailable; using semantic score only."]
             gaps = []
             recommend = semantic_score >= threshold
+            decision_summary = "自动降级：仅基于语义相似度评估。"
+            score_flags.append("llm_score_fallback")
     else:
         llm_score = semantic_score * 0.8
         reasons = ["Resume parsing failed; score based mainly on text similarity."]
         gaps = ["Structured resume data unavailable."]
         recommend = False
+        decision_summary = "简历解析失败，建议人工复核或重新上传可搜索 PDF/DOCX。"
+        score_flags.append("parse_failed")
 
     final_score = round(semantic_score * 0.4 + llm_score * 0.6, 1)
-    recommend_interview = recommend and final_score >= threshold
+    recommend_interview = (
+        recommend and final_score >= threshold and resume.parse_status == "success"
+    )
+
+    if structured:
+        try:
+            followup_pack = generate_followup_pack(job_structured, structured, gaps)
+            followups_json = followup_pack.model_dump_json(ensure_ascii=False)
+        except Exception:
+            followups_json = "[]"
+            score_flags.append("followup_fallback")
 
     existing = (
         db.query(ScreeningResult)
         .filter(ScreeningResult.resume_id == resume.id)
         .first()
     )
+    payload = dict(
+        semantic_score=semantic_score,
+        llm_score=llm_score,
+        final_score=final_score,
+        reasons_json=json.dumps(reasons, ensure_ascii=False),
+        gaps_json=json.dumps(gaps, ensure_ascii=False),
+        dimension_scores_json=json.dumps(dimension_scores, ensure_ascii=False),
+        decision_summary=decision_summary,
+        followups_json=followups_json,
+        score_flags_json=json.dumps(list(set(score_flags)), ensure_ascii=False),
+        recommend_interview=recommend_interview,
+    )
     if existing:
-        existing.semantic_score = semantic_score
-        existing.llm_score = llm_score
-        existing.final_score = final_score
-        existing.reasons_json = json.dumps(reasons, ensure_ascii=False)
-        existing.gaps_json = json.dumps(gaps, ensure_ascii=False)
-        existing.recommend_interview = recommend_interview
+        for key, value in payload.items():
+            setattr(existing, key, value)
         screening = existing
     else:
         screening = ScreeningResult(
             job_id=job.id,
             resume_id=resume.id,
-            semantic_score=semantic_score,
-            llm_score=llm_score,
-            final_score=final_score,
-            reasons_json=json.dumps(reasons, ensure_ascii=False),
-            gaps_json=json.dumps(gaps, ensure_ascii=False),
-            recommend_interview=recommend_interview,
+            **payload,
         )
         db.add(screening)
 
@@ -97,7 +180,7 @@ def _screen_single_resume(
     return screening
 
 
-def _build_summary(structured) -> str:
+def _build_summary(structured: ResumeStructured) -> str:
     skills = ", ".join(structured.skills[:15])
     highlights = "; ".join(structured.highlights[:5])
     return (

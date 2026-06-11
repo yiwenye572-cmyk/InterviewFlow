@@ -13,6 +13,7 @@ class Job(Base):
     title: Mapped[str] = mapped_column(String(255), default="Untitled Job")
     filename: Mapped[str] = mapped_column(String(512))
     raw_text: Mapped[str] = mapped_column(Text)
+    structured_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     resumes: Mapped[list["Resume"]] = relationship(back_populates="job")
@@ -28,6 +29,7 @@ class Resume(Base):
     filename: Mapped[str] = mapped_column(String(512))
     raw_text: Mapped[str] = mapped_column(Text)
     parse_status: Mapped[str] = mapped_column(String(32), default="pending")
+    parse_quality: Mapped[str] = mapped_column(String(32), default="good")
     structured_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -50,6 +52,11 @@ class ScreeningResult(Base):
     final_score: Mapped[float] = mapped_column(Float, default=0.0)
     reasons_json: Mapped[str] = mapped_column(Text, default="[]")
     gaps_json: Mapped[str] = mapped_column(Text, default="[]")
+    dimension_scores_json: Mapped[str] = mapped_column(Text, default="{}")
+    decision_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    followups_json: Mapped[str] = mapped_column(Text, default="[]")
+    questions_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    score_flags_json: Mapped[str] = mapped_column(Text, default="[]")
     recommend_interview: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

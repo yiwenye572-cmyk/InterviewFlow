@@ -5,11 +5,32 @@
 ## 功能概览
 
 1. **上传**：JD + 多份简历（PDF / DOCX / TXT）
-2. **筛选（A 薄层）**：结构化抽取 → 语义相似度 + LLM  rubric 混合打分 → 是否推荐面试
-3. **面试（B 深主线）**：可选面试官人设，多轮文字对话，SSE 流式输出，动态追问
+2. **筛选（A 薄层）**：JD/简历结构化抽取 → 混合打分 → 追问包（3–5）→ 按需试题包（≥10）→ 决策建议
+3. **面试（B 深主线）**：消费 A 层追问/试题种子，多轮 Agent 动态面试
 4. **报告**：岗位匹配度、沟通能力、风险点、下轮建议；含 Self-reflection 修正
 
-> A 层刻意不做批量静态试题生成——正式考察由 B 层 Agent 动态完成。
+> **A 层与 B 层分工**：A 输出结构化决策与预生成考察提纲；B 负责动态多轮追问与终评。未推荐候选人也可进入模拟面试。
+
+## A 层架构（智能简历解析与筛选引擎）
+
+### 与阿里题目场景 A 的映射
+
+| 题目要求 | 实现 |
+|----------|------|
+| 结构化提取 + 向量/结构化存储 | `ResumeStructured` / `JDStructured` → SQLite；摘要 embedding → Chroma |
+| 智能匹配 0–100 + 理由 + 是否推进 | 40% 语义 + 60% LLM rubric；`dimension_scores` + `decision_summary` |
+| 试题生成 ≥10 道 | `QuestionPack` 懒加载 API + 筛选页抽屉 |
+| 追问模拟 3–5 道 | `FollowupPack` 筛选时同步生成 + 详情页展示 |
+
+### 五阶段流水线
+
+```
+上传解析 → 结构化抽取 → 向量索引 → 混合打分 → 追问包/试题包
+```
+
+### A → B 交接
+
+面试启动时，`InterviewService` 将 gaps、FollowupPack、QuestionPack 考察点注入 Agent persona，优先覆盖 A 层识别的模糊点与能力差距。
 
 ## 架构
 
@@ -68,6 +89,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | POST | `/api/resumes?job_id=` | 批量上传简历 |
 | POST | `/api/screen/{job_id}` | 触发筛选 |
 | GET | `/api/screen/{job_id}/results` | 筛选结果 |
+| GET | `/api/screen/{job_id}/detail/{resume_id}` | 单候选人 A 层详情 |
+| GET | `/api/screen/{job_id}/questions/{resume_id}` | 懒加载试题包（≥10） |
+| GET | `/api/resumes/{resume_id}/structured` | 结构化 JSON |
 | POST | `/api/interview/start` | 开始面试 |
 | GET | `/api/interview/{id}/stream` | SSE 流式输出 |
 | POST | `/api/interview/{id}/message` | 提交回答 |
@@ -81,7 +105,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | 文件 | 用途 |
 |------|------|
 | `resume_extract.txt` | 结构化抽取，强调不臆造、模糊点写入 ambiguities |
-| `match_score.txt` | JD-简历 rubric 打分 + recommend_interview |
+| `jd_extract.txt` | JD 结构化：必备技能、年限、硬性条件 |
+| `match_score.txt` | 维度 rubric 打分 + decision_summary |
+| `followup_probe.txt` | 3–5 道简历追问 |
+| `question_generate.txt` | ≥10 道预生成面试题 |
 | `persona_init.txt` | 基于 JD 生成面试官人设 |
 | `ask_question.txt` | 动态提问，结合 ambiguities 与上轮评估 |
 | `evaluate_answer.txt` | 静默评估：追问/跑题/简历矛盾检测 |
@@ -110,11 +137,15 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Demo 视频脚本（≥2 分钟）
 
-1. 上传 `job_description.txt` + `resume_good.txt` + `resume_poor.txt`
-2. 展示筛选列表：高分 vs 低分及理由对比
-3. 对高分候选人选择「严厉的技术总监」开始面试
-4. 回答 2~3 轮，展示针对简历模糊点的追问
-5. 结束面试，展示完整评估报告
+**A 段（约 40s）**
+1. 上传 JD + 2 份简历
+2. 筛选列表对比分数、维度分、decision_summary
+3. 展开详情：追问建议 3–5 条
+4. 点击「生成试题」展示 ≥10 道预生成题
+
+**B 段（约 80s）**
+5. 进入模拟面试，展示 Agent 针对模糊点追问
+6. 结束并展示评估报告
 
 ## 技术栈
 

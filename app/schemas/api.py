@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.schemas.resume_structured import FollowupQuestion, InterviewQuestion
+
 
 class JobResponse(BaseModel):
     id: int
@@ -19,6 +21,7 @@ class ScreeningResultItem(BaseModel):
     filename: str
     candidate_name: str
     parse_status: str
+    parse_quality: str = "good"
     semantic_score: float
     llm_score: float
     final_score: float
@@ -26,11 +29,37 @@ class ScreeningResultItem(BaseModel):
     gaps: list[str]
     recommend_interview: bool
     can_interview: bool
+    decision_summary: str | None = None
+    dimension_scores: dict[str, int] = Field(default_factory=dict)
+    followups: list[FollowupQuestion] = Field(default_factory=list)
+    has_question_pack: bool = False
+    summary: str | None = None
+    skills: list[str] = Field(default_factory=list)
 
 
 class ScreeningResultsResponse(BaseModel):
     job_id: int
     results: list[ScreeningResultItem]
+
+
+class ScreeningDetailResponse(BaseModel):
+    job_id: int
+    resume_id: int
+    candidate_name: str
+    parse_status: str
+    parse_quality: str
+    structured: dict | None = None
+    screening: dict | None = None
+    followups: list[FollowupQuestion] = Field(default_factory=list)
+    dimension_scores: dict[str, int] = Field(default_factory=dict)
+    decision_summary: str | None = None
+
+
+class QuestionPackResponse(BaseModel):
+    job_id: int
+    resume_id: int
+    questions: list[InterviewQuestion]
+    cached: bool = False
 
 
 class InterviewStartRequest(BaseModel):

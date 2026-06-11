@@ -34,3 +34,6 @@ def init_db() -> None:
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
     os.makedirs(settings.chroma_path, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    from app.database_migrate import migrate_db
+
+    migrate_db()

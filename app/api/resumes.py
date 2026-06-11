@@ -9,6 +9,28 @@ from app.services.document_parser import parse_document
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
 
+@router.get("/{resume_id}/structured")
+def get_resume_structured(resume_id: int, db: Session = Depends(get_db)):
+    import json
+
+    resume = db.get(Resume, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    structured = None
+    if resume.structured_json:
+        try:
+            structured = json.loads(resume.structured_json)
+        except Exception:
+            structured = None
+    return {
+        "resume_id": resume_id,
+        "parse_status": resume.parse_status,
+        "parse_quality": resume.parse_quality,
+        "structured": structured,
+        "summary": resume.summary_text,
+    }
+
+
 @router.post("", response_model=ResumeUploadResponse)
 async def upload_resumes(
     job_id: int,
@@ -30,6 +52,7 @@ async def upload_resumes(
             filename=parsed.filename,
             raw_text=parsed.raw_text,
             parse_status="pending",
+            parse_quality=parsed.parse_quality,
         )
         db.add(resume)
         uploaded.append(parsed.filename)

@@ -29,6 +29,7 @@ class InterviewGraphState(TypedDict, total=False):
     assistant_reply: str
     report: dict
     risk_notes: list[str]
+    a_layer_context: str
 
 
 def init_persona_node(state: InterviewGraphState) -> InterviewGraphState:
@@ -113,16 +114,15 @@ def route_after_evaluate(state: InterviewGraphState) -> str:
     return "ask_question"
 
 
-def ask_question_node(state: InterviewGraphState) -> InterviewGraphState:
-    settings = get_settings()
-    system = (PROMPT_DIR / "ask_question.txt").read_text(encoding="utf-8")
+def _build_question_context(state: InterviewGraphState) -> str:
     eval_data = state.get("last_evaluation") or {}
     history = _format_history(state.get("messages", []))
     structured = state.get("structured", {})
     ambiguities = structured.get("ambiguities", [])
-
-    user_content = (
+    a_layer = state.get("a_layer_context", "")
+    return (
         f"{state.get('persona_prompt', '')}\n\n"
+        f"{a_layer}\n\n"
         f"Job Description:\n{state['job_text'][:4000]}\n\n"
         f"Candidate resume summary:\n{json.dumps(structured, ensure_ascii=False)}\n\n"
         f"Resume ambiguities to probe:\n{json.dumps(ambiguities, ensure_ascii=False)}\n\n"
@@ -132,6 +132,12 @@ def ask_question_node(state: InterviewGraphState) -> InterviewGraphState:
         f"Running summary:\n{state.get('running_summary', 'None')}\n\n"
         "Generate the next interviewer message."
     )
+
+
+def ask_question_node(state: InterviewGraphState) -> InterviewGraphState:
+    settings = get_settings()
+    system = (PROMPT_DIR / "ask_question.txt").read_text(encoding="utf-8")
+    user_content = _build_question_context(state)
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
@@ -202,22 +208,7 @@ def build_interview_graph():
 def stream_question(state: InterviewGraphState):
     settings = get_settings()
     system = (PROMPT_DIR / "ask_question.txt").read_text(encoding="utf-8")
-    eval_data = state.get("last_evaluation") or {}
-    history = _format_history(state.get("messages", []))
-    structured = state.get("structured", {})
-    ambiguities = structured.get("ambiguities", [])
-
-    user_content = (
-        f"{state.get('persona_prompt', '')}\n\n"
-        f"Job Description:\n{state['job_text'][:4000]}\n\n"
-        f"Candidate resume summary:\n{json.dumps(structured, ensure_ascii=False)}\n\n"
-        f"Resume ambiguities to probe:\n{json.dumps(ambiguities, ensure_ascii=False)}\n\n"
-        f"Topics already covered:\n{json.dumps(state.get('topics_covered', []), ensure_ascii=False)}\n\n"
-        f"Last evaluation:\n{json.dumps(eval_data, ensure_ascii=False)}\n\n"
-        f"Conversation so far:\n{history}\n\n"
-        f"Running summary:\n{state.get('running_summary', 'None')}\n\n"
-        "Generate the next interviewer message."
-    )
+    user_content = _build_question_context(state)
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},

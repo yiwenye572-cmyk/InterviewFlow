@@ -8,6 +8,11 @@ class WorkItem(BaseModel):
     description: str = ""
 
 
+class ContactInfo(BaseModel):
+    phone: str = ""
+    email: str = ""
+
+
 class ResumeStructured(BaseModel):
     name: str = "Unknown"
     years_experience: float = 0.0
@@ -17,13 +22,50 @@ class ResumeStructured(BaseModel):
     highlights: list[str] = Field(default_factory=list)
     ambiguities: list[str] = Field(default_factory=list)
     summary: str = ""
+    contact: ContactInfo | None = None
+    expected_salary: str | None = None
+    interview_feedback: list[str] = Field(default_factory=list)
+
+
+class JDStructured(BaseModel):
+    title: str = ""
+    required_skills: list[str] = Field(default_factory=list)
+    preferred_skills: list[str] = Field(default_factory=list)
+    min_years: float = 0.0
+    responsibilities: list[str] = Field(default_factory=list)
+    hard_filters: list[str] = Field(default_factory=list)
 
 
 class MatchLLMResult(BaseModel):
     score: int = Field(ge=0, le=100)
+    dimension_scores: dict[str, int] = Field(default_factory=dict)
     reasons: list[str] = Field(default_factory=list)
     gaps: list[str] = Field(default_factory=list)
     recommend_interview: bool = False
+    decision_summary: str = ""
+
+
+class FollowupQuestion(BaseModel):
+    question: str
+    target_ambiguity: str = ""
+    probe_intent: str = ""
+    difficulty: str = "medium"
+
+
+class FollowupPack(BaseModel):
+    items: list[FollowupQuestion] = Field(default_factory=list)
+
+
+class InterviewQuestion(BaseModel):
+    question: str
+    competency: str = ""
+    difficulty: str = "medium"
+    rubric: str = ""
+    category: str = "technical"
+
+
+class QuestionPack(BaseModel):
+    items: list[InterviewQuestion] = Field(default_factory=list)
 
 
 class AnswerEvaluation(BaseModel):

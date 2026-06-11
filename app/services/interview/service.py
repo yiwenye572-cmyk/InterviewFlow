@@ -4,8 +4,8 @@ from typing import Generator
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.entities import InterviewMessage, InterviewSession, Job, Resume
-from app.schemas.resume_structured import ResumeStructured
+from app.models.entities import InterviewMessage, InterviewSession, Job, Resume, ScreeningResult
+from app.schemas.resume_structured import FollowupPack, QuestionPack, ResumeStructured
 from app.services.interview.nodes import (
     InterviewGraphState,
     closing_node,
@@ -40,8 +40,9 @@ class InterviewService:
 
         state = self._build_state(session, job, resume)
         result = init_persona_node(state)
+        a_layer_brief = self._build_a_layer_brief(job.id, resume.id)
 
-        session.persona_prompt = result.get("persona_prompt")
+        session.persona_prompt = (result.get("persona_prompt") or "") + "\n\n" + a_layer_brief
         session.pending_action = "stream_opening"
         session.round_count = 0
         self.db.commit()
@@ -201,6 +202,7 @@ class InterviewService:
     ) -> InterviewGraphState:
         structured = self._parse_structured(resume)
         messages = self._load_messages(session.id)
+        a_layer_brief = self._build_a_layer_brief(job.id, resume.id)
         return InterviewGraphState(
             job_text=job.raw_text,
             resume_text=resume.raw_text,
@@ -213,7 +215,52 @@ class InterviewService:
             messages=messages,
             topics_covered=json.loads(session.topics_covered_json or "[]"),
             risk_notes=[],
+            a_layer_context=a_layer_brief,
         )
+
+    def _build_a_layer_brief(self, job_id: int, resume_id: int) -> str:
+        screening = (
+            self.db.query(ScreeningResult)
+            .filter(
+                ScreeningResult.job_id == job_id,
+                ScreeningResult.resume_id == resume_id,
+            )
+            .first()
+        )
+        if not screening:
+            return "A-layer screening: no prior screening data."
+
+        lines = ["=== A-layer screening seeds (priority for early interview rounds) ==="]
+        gaps = json.loads(screening.gaps_json or "[]")
+        if gaps:
+            lines.append("Known gaps: " + "; ".join(gaps[:5]))
+
+        try:
+            followups = FollowupPack.model_validate_json(
+                screening.followups_json or '{"items":[]}'
+            ).items
+            if followups:
+                lines.append("Priority follow-up questions:")
+                for i, f in enumerate(followups[:5], 1):
+                    lines.append(f"{i}. {f.question} (intent: {f.probe_intent})")
+        except Exception:
+            pass
+
+        if screening.questions_json:
+            try:
+                questions = QuestionPack.model_validate_json(screening.questions_json).items
+                competencies = [q.competency for q in questions[:10] if q.competency]
+                if competencies:
+                    lines.append(
+                        "Question pack competencies to cover: " + ", ".join(competencies[:10])
+                    )
+            except Exception:
+                pass
+
+        if screening.decision_summary:
+            lines.append(f"Screening decision: {screening.decision_summary}")
+
+        return "\n".join(lines)
 
     def _parse_structured(self, resume: Resume) -> ResumeStructured:
         if resume.structured_json:

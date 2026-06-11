@@ -11,18 +11,33 @@ class ParsedDocument:
     filename: str
     raw_text: str
     char_count: int
+    parse_quality: str = "good"
 
 
-def _parse_pdf(content: bytes) -> str:
+def _decode_txt(content: bytes) -> str:
+    for encoding in ("utf-8", "gbk", "gb2312", "latin-1"):
+        try:
+            return content.decode(encoding).strip()
+        except UnicodeDecodeError:
+            continue
+    return content.decode("utf-8", errors="ignore").strip()
+
+
+def _parse_pdf(content: bytes) -> tuple[str, str]:
     doc = fitz.open(stream=content, filetype="pdf")
     try:
         parts = [page.get_text() for page in doc]
-        return "\n".join(parts).strip()
+        text = "\n".join(parts).strip()
     finally:
         doc.close()
+    if not text:
+        return "", "scanned"
+    if len(text) < 100:
+        return text, "low"
+    return text, "good"
 
 
-def _parse_docx(content: bytes) -> str:
+def _parse_docx(content: bytes) -> tuple[str, str]:
     doc = Document(BytesIO(content))
     parts = [p.text for p in doc.paragraphs if p.text.strip()]
     for table in doc.tables:
@@ -30,7 +45,12 @@ def _parse_docx(content: bytes) -> str:
             cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
             if cells:
                 parts.append(" | ".join(cells))
-    return "\n".join(parts).strip()
+    text = "\n".join(parts).strip()
+    if not text:
+        return "", "low"
+    if len(text) < 100:
+        return text, "low"
+    return text, "good"
 
 
 def parse_document(filename: str, content: bytes) -> ParsedDocument:
@@ -38,18 +58,28 @@ def parse_document(filename: str, content: bytes) -> ParsedDocument:
         raise HTTPException(status_code=422, detail=f"File '{filename}' is empty.")
 
     lower = filename.lower()
+    parse_quality = "good"
     try:
         if lower.endswith(".pdf"):
-            text = _parse_pdf(content)
+            text, parse_quality = _parse_pdf(content)
+            if parse_quality == "scanned":
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"File '{filename}' appears to be a scanned PDF with no extractable text. "
+                        "Please upload a searchable PDF or DOCX."
+                    ),
+                )
         elif lower.endswith(".docx"):
-            text = _parse_docx(content)
+            text, parse_quality = _parse_docx(content)
         elif lower.endswith(".doc"):
             raise HTTPException(
                 status_code=422,
                 detail=f"File '{filename}': .doc format not supported. Please convert to .docx or PDF.",
             )
         elif lower.endswith(".txt"):
-            text = content.decode("utf-8", errors="ignore").strip()
+            text = _decode_txt(content)
+            parse_quality = "low" if len(text) < 100 else "good"
         else:
             raise HTTPException(
                 status_code=422,
@@ -68,4 +98,9 @@ def parse_document(filename: str, content: bytes) -> ParsedDocument:
             detail=f"File '{filename}' contains no extractable text.",
         )
 
-    return ParsedDocument(filename=filename, raw_text=text, char_count=len(text))
+    return ParsedDocument(
+        filename=filename,
+        raw_text=text,
+        char_count=len(text),
+        parse_quality=parse_quality,
+    )
