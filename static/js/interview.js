@@ -7,6 +7,8 @@ const chatWindow = document.getElementById("chat-window");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const endBtn = document.getElementById("end-btn");
+const typingIndicator = document.getElementById("typing-indicator");
+const liveContent = document.getElementById("live-content");
 
 let isStreaming = false;
 let roundCount = 0;
@@ -14,6 +16,14 @@ let roundCount = 0;
 const personaLabel = {
   tech_lead: "严厉的技术总监",
   hr_friendly: "亲切的 HR",
+};
+
+const phaseLabel = {
+  opening: "开场",
+  technical: "技术",
+  project: "项目",
+  behavioral: "行为",
+  closing: "收尾",
 };
 
 document.getElementById("meta-persona").textContent =
@@ -33,10 +43,98 @@ function appendSystem(text) {
   appendMessage("system", text);
 }
 
+function setTyping(active) {
+  typingIndicator.classList.toggle("hidden", !active);
+}
+
+function renderLiveAssessment(live) {
+  if (!live) return;
+  liveContent.innerHTML = `
+    <div class="live-scores">
+      <div class="live-score-item">
+        <span class="label">岗位匹配（预估）</span>
+        <span class="value">${live.provisional_job_fit ?? "—"}</span>
+      </div>
+      <div class="live-score-item">
+        <span class="label">沟通能力</span>
+        <span class="value">${live.provisional_communication ?? "—"}</span>
+      </div>
+    </div>
+    <div class="live-section">
+      <h4>观察到的优势</h4>
+      <ul>${(live.observed_strengths || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
+    </div>
+    <div class="live-section">
+      <h4>潜在风险</h4>
+      <ul>${(live.observed_risks || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
+    </div>
+    <p class="live-updated">更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function updateMeta(status) {
+  if (status.phase) {
+    document.getElementById("meta-phase").textContent =
+      `阶段：${phaseLabel[status.phase] || status.phase}`;
+  }
+  if (typeof status.round_count === "number") {
+    roundCount = status.round_count;
+    document.getElementById("meta-round").textContent = `轮次：${roundCount}`;
+  }
+  const planned = status.competencies_planned?.length || 0;
+  const covered = status.competencies_covered?.length || 0;
+  document.getElementById("meta-competencies").textContent =
+    `考察点：${covered}/${planned}`;
+}
+
+async function refreshStatus() {
+  if (!sessionId) return;
+  try {
+    const status = await apiRequest(`/api/interview/${sessionId}/status`);
+    updateMeta(status);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function refreshLive() {
+  if (!sessionId) return;
+  try {
+    const live = await apiRequest(`/api/interview/${sessionId}/live`);
+    renderLiveAssessment(live);
+  } catch {
+    /* not available yet */
+  }
+}
+
+async function restoreMessages() {
+  if (!sessionId) return;
+  try {
+    const data = await apiRequest(`/api/interview/${sessionId}/messages`);
+    if (data.messages?.length) {
+      chatWindow.innerHTML = "";
+      for (const msg of data.messages) {
+        if (msg.role === "assistant" || msg.role === "user") {
+          appendMessage(msg.role, msg.content);
+        }
+      }
+      appendSystem("已恢复历史对话");
+    }
+  } catch {
+    /* fresh session */
+  }
+}
+
 async function consumeStream() {
   if (!sessionId) return;
   isStreaming = true;
   sendBtn.disabled = true;
+  setTyping(true);
 
   const bubble = appendMessage("assistant", "", true);
 
@@ -60,6 +158,7 @@ async function consumeStream() {
       delete bubble.dataset.streaming;
       isStreaming = false;
       sendBtn.disabled = false;
+      setTyping(false);
       resolve();
     });
 
@@ -67,6 +166,7 @@ async function consumeStream() {
       source.close();
       isStreaming = false;
       sendBtn.disabled = false;
+      setTyping(false);
       if (event.data) {
         try {
           const msg = JSON.parse(event.data);
@@ -83,6 +183,7 @@ async function consumeStream() {
       source.close();
       isStreaming = false;
       sendBtn.disabled = false;
+      setTyping(false);
     };
   });
 }
@@ -101,18 +202,27 @@ async function sendAnswer() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: text }),
     });
-    roundCount = result.round_count;
-    document.getElementById("meta-round").textContent = `轮次：${roundCount}`;
+    updateMeta(result);
+    if (result.live_assessment) {
+      renderLiveAssessment(result.live_assessment);
+    } else {
+      await refreshLive();
+    }
+    await refreshStatus();
 
-    if (result.pending_action === "stream_closing") {
+    const closing =
+      result.pending_action === "stream_closing" ||
+      result.pending_action === "generate_report";
+
+    if (closing) {
       appendSystem("面试即将结束...");
     }
 
     await consumeStream();
 
-    if (result.pending_action === "stream_closing") {
+    if (closing || result.pending_action === "stream_closing") {
       appendSystem("正在生成评估报告...");
-      const report = await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
+      await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
       window.location.href = `/report.html?session_id=${sessionId}`;
       return;
     }
@@ -134,9 +244,7 @@ userInput.addEventListener("keydown", (e) => {
 endBtn.addEventListener("click", async () => {
   endBtn.disabled = true;
   try {
-    const report = await apiRequest(`/api/interview/${sessionId}/end`, {
-      method: "POST",
-    });
+    await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
     window.location.href = `/report.html?session_id=${sessionId}`;
   } catch (err) {
     showToast(err.message, true);
@@ -144,9 +252,27 @@ endBtn.addEventListener("click", async () => {
   }
 });
 
-if (!sessionId) {
-  showToast("缺少 session_id", true);
-} else {
-  appendSystem("面试已开始，请等待面试官发言...");
-  consumeStream().catch(() => {});
+document.getElementById("toggle-live").addEventListener("click", () => {
+  const sidebar = document.getElementById("live-sidebar");
+  const btn = document.getElementById("toggle-live");
+  sidebar.classList.toggle("collapsed");
+  btn.textContent = sidebar.classList.contains("collapsed") ? "展开" : "收起";
+});
+
+async function init() {
+  if (!sessionId) {
+    showToast("缺少 session_id", true);
+    return;
+  }
+  await restoreMessages();
+  await refreshStatus();
+  const msgs = chatWindow.querySelectorAll(".message.user, .message.assistant");
+  if (!msgs.length) {
+    appendSystem("面试已开始，请等待面试官发言...");
+    await consumeStream().catch(() => {});
+  } else {
+    await refreshLive();
+  }
 }
+
+init();

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from app.config import get_settings
-from app.schemas.resume_structured import InterviewReport, ResumeStructured
+from app.schemas.resume_structured import InterviewReport
 from app.services.llm import chat_completion, structured_completion
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
@@ -13,10 +13,17 @@ def generate_interview_report(
     structured: dict,
     messages: list[dict[str, str]],
     risk_notes: list[str],
+    *,
+    evaluations_log: list[dict] | None = None,
+    live_assessment: dict | None = None,
 ) -> InterviewReport:
     settings = get_settings()
     system = (PROMPT_DIR / "generate_report.txt").read_text(encoding="utf-8")
     transcript = _format_transcript(messages)
+    weak_rounds = [
+        e for e in (evaluations_log or [])
+        if e.get("answer_quality") == "weak" or e.get("resume_mismatch") or e.get("off_topic")
+    ]
     messages_payload = [
         {"role": "system", "content": system},
         {
@@ -25,6 +32,10 @@ def generate_interview_report(
                 f"Job Description:\n{job_text[:6000]}\n\n"
                 f"Resume:\n{json.dumps(structured, ensure_ascii=False)}\n\n"
                 f"Internal risk notes:\n{json.dumps(risk_notes, ensure_ascii=False)}\n\n"
+                f"Round evaluations (weak/mismatch highlighted):\n"
+                f"{json.dumps(weak_rounds, ensure_ascii=False)}\n\n"
+                f"Live assessment snapshot:\n"
+                f"{json.dumps(live_assessment or {}, ensure_ascii=False)}\n\n"
                 f"Interview transcript:\n{transcript}"
             ),
         },

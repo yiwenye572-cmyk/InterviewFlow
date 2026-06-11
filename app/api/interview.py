@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, get_db
 from app.schemas.api import (
     InterviewMessageRequest,
+    InterviewMessageResponse,
+    InterviewMessagesResponse,
     InterviewStartRequest,
     InterviewStartResponse,
+    InterviewStatusResponse,
     ReportResponse,
 )
 from app.services.interview.service import InterviewService
@@ -86,7 +89,7 @@ async def stream_interview(session_id: int):
     )
 
 
-@router.post("/{session_id}/message")
+@router.post("/{session_id}/message", response_model=InterviewMessageResponse)
 def send_message(
     session_id: int,
     payload: InterviewMessageRequest,
@@ -97,11 +100,50 @@ def send_message(
         session = service.submit_answer(session_id, payload.content.strip())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {
-        "session_id": session.id,
-        "round_count": session.round_count,
-        "pending_action": session.pending_action,
-    }
+
+    live = None
+    if session.live_assessment_json:
+        try:
+            live = json.loads(session.live_assessment_json)
+        except Exception:
+            pass
+
+    return InterviewMessageResponse(
+        session_id=session.id,
+        round_count=session.round_count,
+        phase=session.phase or "opening",
+        pending_action=session.pending_action,
+        live_assessment=live,
+    )
+
+
+@router.get("/{session_id}/live")
+def get_live_assessment(session_id: int, db: Session = Depends(get_db)):
+    service = InterviewService(db)
+    live = service.get_live_assessment(session_id)
+    if not live:
+        raise HTTPException(status_code=404, detail="Live assessment not available yet")
+    return live.model_dump()
+
+
+@router.get("/{session_id}/status", response_model=InterviewStatusResponse)
+def get_interview_status(session_id: int, db: Session = Depends(get_db)):
+    service = InterviewService(db)
+    try:
+        status = service.get_status(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return InterviewStatusResponse(**status)
+
+
+@router.get("/{session_id}/messages", response_model=InterviewMessagesResponse)
+def get_interview_messages(session_id: int, db: Session = Depends(get_db)):
+    service = InterviewService(db)
+    try:
+        messages = service.get_messages(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return InterviewMessagesResponse(session_id=session_id, messages=messages)
 
 
 @router.post("/{session_id}/end")
@@ -112,7 +154,13 @@ def end_interview(session_id: int, db: Session = Depends(get_db)):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     report = json.loads(session.report_json) if session.report_json else None
-    return ReportResponse(session_id=session.id, status=session.status, report=report)
+    evaluations_log = json.loads(session.evaluations_log_json or "[]")
+    return ReportResponse(
+        session_id=session.id,
+        status=session.status,
+        report=report,
+        evaluations_log=evaluations_log if report else None,
+    )
 
 
 @router.get("/report/{session_id}", response_model=ReportResponse)
@@ -123,4 +171,10 @@ def get_report(session_id: int, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     report = json.loads(session.report_json) if session.report_json else None
-    return ReportResponse(session_id=session.id, status=session.status, report=report)
+    evaluations_log = json.loads(session.evaluations_log_json or "[]")
+    return ReportResponse(
+        session_id=session.id,
+        status=session.status,
+        report=report,
+        evaluations_log=evaluations_log if report else None,
+    )

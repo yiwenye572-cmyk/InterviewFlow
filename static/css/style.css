@@ -293,6 +293,124 @@ th {
   min-height: 56px;
 }
 
+/* Interview layout with live sidebar */
+.interview-page .container {
+  max-width: 1200px;
+}
+
+.interview-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .interview-grid {
+    grid-template-columns: 1fr;
+  }
+  .live-sidebar.collapsed .live-content {
+    display: none;
+  }
+}
+
+.typing-indicator {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+.typing-indicator.hidden {
+  display: none;
+}
+
+.live-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
+.live-sidebar.collapsed {
+  min-height: auto;
+}
+
+.live-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.live-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.live-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.live-score-item {
+  background: #f1f5f9;
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.live-score-item .label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.live-score-item .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.live-section h4 {
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0.25rem;
+  color: var(--primary);
+}
+
+.live-section ul {
+  font-size: 0.8rem;
+  padding-left: 1rem;
+  margin: 0;
+}
+
+.live-placeholder,
+.live-updated {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.eval-log-item {
+  border-left: 3px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #f8fafc;
+  font-size: 0.85rem;
+}
+
+.eval-log-item.weak {
+  border-left-color: var(--danger);
+}
+
+.eval-log-item.mismatch {
+  border-left-color: var(--warning);
+}
+
 /* Report */
 .report-grid {
   display: grid;

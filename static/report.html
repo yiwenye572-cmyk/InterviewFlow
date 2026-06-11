@@ -64,6 +64,22 @@
         }
 
         const rec = reportData.overall_recommendation || "hold";
+        const evalLog = data.evaluations_log || [];
+        const evalHtml = evalLog.length
+          ? evalLog.map((e) => {
+              const cls = e.resume_mismatch || e.off_topic
+                ? "mismatch"
+                : e.answer_quality === "weak"
+                  ? "weak"
+                  : "";
+              return `<div class="eval-log-item ${cls}">
+                <strong>第 ${e.round || "?"} 轮</strong> · ${escapeHtml(e.answer_quality || "—")}
+                ${e.competency_signal ? ` · ${escapeHtml(e.competency_signal)}` : ""}
+                <p>${escapeHtml(e.notes || e.followup_reason || "")}</p>
+              </div>`;
+            }).join("")
+          : "<p style='color:var(--muted)'>无过程评估记录</p>";
+
         container.innerHTML = `
           <div class="report-section">
             <h3>综合建议</h3>
@@ -88,6 +104,10 @@
           <div class="report-section">
             <h3>下轮考察建议</h3>
             <ul>${listItems(reportData.next_round_focus)}</ul>
+          </div>
+          <div class="report-section">
+            <h3>面试过程摘要</h3>
+            ${evalHtml}
           </div>`;
       } catch (err) {
         container.innerHTML = `<p style="color:var(--danger)">${escapeHtml(err.message)}</p>`;

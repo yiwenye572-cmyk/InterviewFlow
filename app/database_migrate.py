@@ -35,3 +35,29 @@ def migrate_db() -> None:
     _add_column_if_missing(
         "screening_results", "score_flags_json", "score_flags_json TEXT DEFAULT '[]'"
     )
+    _add_column_if_missing(
+        "interview_sessions", "phase", "phase VARCHAR(32) DEFAULT 'opening'"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "risk_notes_json", "risk_notes_json TEXT DEFAULT '[]'"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "evaluations_log_json", "evaluations_log_json TEXT DEFAULT '[]'"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "competencies_planned_json",
+        "competencies_planned_json TEXT DEFAULT '[]'",
+    )
+    _add_column_if_missing(
+        "interview_sessions", "competencies_covered_json",
+        "competencies_covered_json TEXT DEFAULT '[]'",
+    )
+    _add_column_if_missing(
+        "interview_sessions", "followup_queue_json", "followup_queue_json TEXT DEFAULT '[]'"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "live_assessment_json", "live_assessment_json TEXT"
+    )
+    _add_column_if_missing(
+        "interview_sessions", "topic_plan_json", "topic_plan_json TEXT"
+    )

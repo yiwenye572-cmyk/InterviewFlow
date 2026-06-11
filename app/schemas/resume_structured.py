@@ -76,6 +76,34 @@ class AnswerEvaluation(BaseModel):
     off_topic: bool = False
     topic_for_next: str = ""
     notes: str = ""
+    competency_signal: str = ""
+    partial_score: int = Field(default=60, ge=0, le=100)
+
+
+class PersonaProfile(BaseModel):
+    role_title: str = "Interviewer"
+    tone_description: str = ""
+    focus_areas: list[str] = Field(default_factory=list)
+    question_style: str = ""
+    system_prompt_block: str = ""
+
+
+class TopicPlan(BaseModel):
+    phase: str = "technical"
+    next_topic: str = ""
+    competency_target: str = ""
+    rationale: str = ""
+    should_close: bool = False
+
+
+class LiveAssessment(BaseModel):
+    round_count: int = 0
+    current_phase: str = "opening"
+    provisional_job_fit: int = Field(default=60, ge=0, le=100)
+    provisional_communication: int = Field(default=60, ge=0, le=100)
+    observed_strengths: list[str] = Field(default_factory=list)
+    observed_risks: list[str] = Field(default_factory=list)
+    last_updated: str = ""
 
 
 class InterviewReport(BaseModel):

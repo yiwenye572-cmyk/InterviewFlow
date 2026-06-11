@@ -78,7 +78,31 @@ class InterviewMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
 
 
+class InterviewMessageResponse(BaseModel):
+    session_id: int
+    round_count: int
+    phase: str = "opening"
+    pending_action: str | None = None
+    live_assessment: dict | None = None
+
+
+class InterviewStatusResponse(BaseModel):
+    session_id: int
+    status: str
+    phase: str
+    round_count: int
+    pending_action: str | None = None
+    competencies_covered: list[str] = Field(default_factory=list)
+    competencies_planned: list[str] = Field(default_factory=list)
+
+
+class InterviewMessagesResponse(BaseModel):
+    session_id: int
+    messages: list[dict[str, str]]
+
+
 class ReportResponse(BaseModel):
     session_id: int
     status: str
     report: dict | None = None
+    evaluations_log: list[dict] | None = None

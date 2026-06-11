@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-  <div class="container">
+  <div class="container interview-page">
     <header>
       <h1>AI 模拟面试</h1>
-      <p>多轮对话 · 动态追问 · 实时流式输出</p>
+      <p>LangGraph 编排 · 动态追问 · 实时评估</p>
     </header>
 
     <nav class="steps">
@@ -20,19 +20,34 @@
       <span class="step">4. 报告</span>
     </nav>
 
-    <div class="card chat-layout">
-      <div class="chat-meta">
-        <span id="meta-persona">面试官：—</span>
-        <span id="meta-round">轮次：0</span>
+    <div class="interview-grid">
+      <div class="card chat-layout">
+        <div class="chat-meta">
+          <span id="meta-persona">面试官：—</span>
+          <span id="meta-phase">阶段：—</span>
+          <span id="meta-round">轮次：0</span>
+          <span id="meta-competencies">考察点：0/0</span>
+        </div>
+        <div id="chat-window" class="chat-window"></div>
+        <div id="typing-indicator" class="typing-indicator hidden">面试官正在输入…</div>
+        <div class="chat-input-row">
+          <textarea id="user-input" placeholder="输入你的回答..." rows="2"></textarea>
+          <button id="send-btn" class="btn btn-primary">发送</button>
+        </div>
+        <div class="actions">
+          <button id="end-btn" class="btn btn-danger">结束面试并生成报告</button>
+        </div>
       </div>
-      <div id="chat-window" class="chat-window"></div>
-      <div class="chat-input-row">
-        <textarea id="user-input" placeholder="输入你的回答..." rows="2"></textarea>
-        <button id="send-btn" class="btn btn-primary">发送</button>
-      </div>
-      <div class="actions">
-        <button id="end-btn" class="btn btn-danger">结束面试并生成报告</button>
-      </div>
+
+      <aside class="card live-sidebar" id="live-sidebar">
+        <div class="live-header">
+          <h3>实时评估</h3>
+          <button id="toggle-live" class="btn btn-secondary btn-sm" type="button">收起</button>
+        </div>
+        <div id="live-content" class="live-content">
+          <p class="live-placeholder">完成首轮回答后将显示实时评估快照</p>
+        </div>
+      </aside>
     </div>
   </div>
 

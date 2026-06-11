@@ -8,5 +8,7 @@ Return JSON:
 - off_topic: boolean - true if answer drifted from JD/interview focus
 - topic_for_next: suggested next topic if moving on
 - notes: brief internal notes for report generation
+- competency_signal: competency dimension demonstrated or tested this round
+- partial_score: integer 0-100 impression score for this answer
 
 Be strict on resume_mismatch and off_topic detection.

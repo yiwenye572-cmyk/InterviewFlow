@@ -32,6 +32,42 @@
 
 面试启动时，`InterviewService` 将 gaps、FollowupPack、QuestionPack 考察点注入 Agent persona，优先覆盖 A 层识别的模糊点与能力差距。
 
+## B 层架构（LangGraph 模拟面试 Agent）
+
+### 与阿里题目场景 B 的映射
+
+| 题目要求 | 实现 |
+|----------|------|
+| 角色设定（技术总监 / HR） | `PersonaProfile` + LLM 化开场；tech_lead / hr_friendly 全链路一致 |
+| 多轮对话 + 记忆 + 动态追问 | LangGraph `Evaluate → Route → FollowUp/Plan/Ask/Closing`；SQLite 消息 + running_summary |
+| 非机械问答 | `TopicPlanner` 阶段规划 + competencies 覆盖追踪 |
+| 实时评估报告 | `LiveAssessment` 增量快照 + 终局 Report + Self-reflection |
+
+### LangGraph 状态图
+
+```
+InitPersona → StreamOpening → WaitAnswer
+  → EvaluateAnswer → RouteDecision
+    → FollowUpQuestion | PlanNextTopic → AskQuestion | StreamClosing → GenerateReport
+```
+
+**REST + SSE 映射**：
+
+| 用户动作 | Graph 跃迁 |
+|----------|------------|
+| `POST /start` | InitPersona → pending=stream_opening |
+| `GET /stream` | 执行 StreamOpening / FollowUp / Ask / Closing |
+| `POST /message` | Evaluate → Route → Plan → 设置下一 pending |
+| `POST /end` | GenerateReport |
+
+### B 层 API（新增）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/interview/{id}/live` | 实时评估快照 |
+| GET | `/api/interview/{id}/status` | phase、轮次、考察点覆盖 |
+| GET | `/api/interview/{id}/messages` | 历史消息（刷新恢复） |
+
 ## 架构
 
 ```
@@ -94,7 +130,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | GET | `/api/resumes/{resume_id}/structured` | 结构化 JSON |
 | POST | `/api/interview/start` | 开始面试 |
 | GET | `/api/interview/{id}/stream` | SSE 流式输出 |
-| POST | `/api/interview/{id}/message` | 提交回答 |
+| POST | `/api/interview/{id}/message` | 提交回答（含 live_assessment） |
+| GET | `/api/interview/{id}/live` | 实时评估快照 |
+| GET | `/api/interview/{id}/status` | 面试状态 |
+| GET | `/api/interview/{id}/messages` | 历史消息 |
 | POST | `/api/interview/{id}/end` | 结束并生成报告 |
 | GET | `/api/interview/report/{id}` | 获取报告 |
 
@@ -109,8 +148,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `match_score.txt` | 维度 rubric 打分 + decision_summary |
 | `followup_probe.txt` | 3–5 道简历追问 |
 | `question_generate.txt` | ≥10 道预生成面试题 |
-| `persona_init.txt` | 基于 JD 生成面试官人设 |
-| `ask_question.txt` | 动态提问，结合 ambiguities 与上轮评估 |
+| `persona_init.txt` | PersonaProfile 结构化人设 |
+| `opening_message.txt` | LLM 化风格化开场 |
+| `followup_question.txt` | 同话题深度追问 |
+| `topic_planner.txt` | 阶段与下一话题规划 |
+| `ask_question.txt` | 新话题动态提问 |
 | `evaluate_answer.txt` | 静默评估：追问/跑题/简历矛盾检测 |
 | `generate_report.txt` | 结构化评估报告 |
 | `report_reflection.txt` | 报告 Self-reflection，修正矛盾 |
@@ -144,8 +186,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 4. 点击「生成试题」展示 ≥10 道预生成题
 
 **B 段（约 80s）**
-5. 进入模拟面试，展示 Agent 针对模糊点追问
-6. 结束并展示评估报告
+5. 选择 persona → 观察 **风格化 LLM 开场**（非硬编码模板）
+6. 故意 vague 回答 → Agent **追问同一话题**（Live 侧栏分数变化）
+7. 侧栏展示 **实时评估** provisional 分数与风险点
+8. 结束 → 报告含过程摘要 + 风险点与 A 层 gaps 呼应
 
 ## 技术栈
 
