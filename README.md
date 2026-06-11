@@ -115,6 +115,13 @@ InitPersona → StreamOpening → WaitAnswer
 - 当 `candidate_state` 为 `hesitant` 或 `stuck`，且 `enable_encouragement=True` 时，路由至 `stream_encouragement`（每轮 evaluate 最多一次）。
 - **Calibrator 不参与**鼓励消息；鼓励话术不抬高 Live/Final 分数。`hr_friendly` 默认开启，`tech_lead` 默认关闭。
 
+### 双向反馈飞轮
+
+- **招聘方侧（已有）**：终局报告 gaps → `_apply_feedback_loop` → `ResumeStructured.interview_feedback`
+- **候选人侧（P1）**：报告页提交 1–5 星 + 简述 → `InterviewSession.candidate_feedback_json`（每 session 仅一次）
+- **飞轮注入**：同岗位下次 `POST /start` 时，`_build_candidate_experience_flywheel` 将近期体验摘要拼入 `persona_prompt`（无需额外 LLM）
+- 候选人反馈**不影响** Calibrator / 终局分数
+
 ### 历史岗位与报告列表
 
 - JD 结构化结果、面试报告持久化于 SQLite（`jobs`、`interview_sessions.report_json`）。
@@ -207,6 +214,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | GET | `/api/interview/{id}/status` | 面试状态 |
 | GET | `/api/interview/{id}/messages` | 历史消息 |
 | POST | `/api/interview/{id}/end` | 结束并生成报告 |
+| POST | `/api/interview/{id}/feedback` | 候选人提交面试体验反馈（1–5 星 + 简述） |
 | GET | `/api/interview/report/{id}` | 获取报告 |
 
 ## Prompt 设计思路

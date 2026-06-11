@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
 from app.schemas.api import (
+    CandidateFeedbackRequest,
+    CandidateFeedbackResponse,
     InterviewMessageRequest,
     InterviewMessageResponse,
     InterviewMessagesResponse,
@@ -17,10 +19,26 @@ from app.schemas.api import (
     InterviewStatusResponse,
     ReportResponse,
 )
+from app.models.entities import InterviewSession
 from app.services.interview.service import InterviewService
 from app.services.interview.score_trace import build_score_timeline
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
+
+
+def _build_report_response(session: InterviewSession) -> ReportResponse:
+    report = json.loads(session.report_json) if session.report_json else None
+    evaluations_log = json.loads(session.evaluations_log_json or "[]")
+    timeline = build_score_timeline(evaluations_log) if evaluations_log else None
+    feedback = InterviewService.parse_candidate_feedback(session)
+    return ReportResponse(
+        session_id=session.id,
+        status=session.status,
+        report=report,
+        evaluations_log=evaluations_log if report else None,
+        score_timeline=timeline if report else None,
+        candidate_feedback=feedback,
+    )
 
 
 @router.post("/start", response_model=InterviewStartResponse)
@@ -161,32 +179,35 @@ def end_interview(session_id: int, db: Session = Depends(get_db)):
         session = service.end_session(session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    report = json.loads(session.report_json) if session.report_json else None
-    evaluations_log = json.loads(session.evaluations_log_json or "[]")
-    timeline = build_score_timeline(evaluations_log) if evaluations_log else None
-    return ReportResponse(
-        session_id=session.id,
-        status=session.status,
-        report=report,
-        evaluations_log=evaluations_log if report else None,
-        score_timeline=timeline if report else None,
+    return _build_report_response(session)
+
+
+@router.post("/{session_id}/feedback", response_model=CandidateFeedbackResponse)
+def submit_candidate_feedback(
+    session_id: int,
+    payload: CandidateFeedbackRequest,
+    db: Session = Depends(get_db),
+):
+    service = InterviewService(db)
+    try:
+        feedback = service.submit_candidate_feedback(
+            session_id, payload.rating, payload.comment or ""
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if "already submitted" in msg:
+            raise HTTPException(status_code=409, detail=msg) from exc
+        if "not found" in msg.lower():
+            raise HTTPException(status_code=404, detail=msg) from exc
+        raise HTTPException(status_code=400, detail=msg) from exc
+    return CandidateFeedbackResponse(
+        session_id=session_id, submitted=True, feedback=feedback
     )
 
 
 @router.get("/report/{session_id}", response_model=ReportResponse)
 def get_report(session_id: int, db: Session = Depends(get_db)):
-    from app.models.entities import InterviewSession
-
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    report = json.loads(session.report_json) if session.report_json else None
-    evaluations_log = json.loads(session.evaluations_log_json or "[]")
-    timeline = build_score_timeline(evaluations_log) if evaluations_log else None
-    return ReportResponse(
-        session_id=session.id,
-        status=session.status,
-        report=report,
-        evaluations_log=evaluations_log if report else None,
-        score_timeline=timeline if report else None,
-    )
+    return _build_report_response(session)

@@ -87,3 +87,6 @@ def migrate_db() -> None:
         "interview_sessions", "encouraged_this_round",
         "encouraged_this_round BOOLEAN DEFAULT 0",
     )
+    _add_column_if_missing(
+        "interview_sessions", "candidate_feedback_json", "candidate_feedback_json TEXT"
+    )

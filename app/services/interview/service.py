@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from typing import Generator
 
 from sqlalchemy.orm import Session
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models.entities import InterviewMessage, InterviewSession, Job, Resume, ScreeningResult
 from app.schemas.resume_structured import (
+    CandidateInterviewFeedback,
     FollowupPack,
     InterviewConfig,
     JDStructured,
@@ -86,8 +88,11 @@ class InterviewService:
         state = self._build_state(session, job, resume)
         result = _init_graph.invoke(state)
         a_layer_brief = self._build_a_layer_brief(job.id, resume.id)
+        flywheel = self._build_candidate_experience_flywheel(job.id)
 
         session.persona_prompt = (result.get("persona_prompt") or "") + "\n\n" + a_layer_brief
+        if flywheel:
+            session.persona_prompt += "\n\n" + flywheel
         session.pending_action = "stream_opening"
         session.round_count = 0
         session.phase = "opening"
@@ -271,6 +276,36 @@ class InterviewService:
         if not session or not session.live_assessment_json:
             return None
         return LiveAssessment.model_validate_json(session.live_assessment_json)
+
+    def submit_candidate_feedback(
+        self, session_id: int, rating: int, comment: str = ""
+    ) -> dict:
+        session = self.db.get(InterviewSession, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        if session.status != "completed" or not session.report_json:
+            raise ValueError("请先完成面试并生成报告")
+        if session.candidate_feedback_json:
+            raise ValueError("Feedback already submitted")
+
+        feedback = CandidateInterviewFeedback(
+            rating=rating,
+            comment=(comment or "")[:500],
+            submitted_at=datetime.now(timezone.utc).isoformat(),
+        )
+        session.candidate_feedback_json = feedback.model_dump_json(ensure_ascii=False)
+        self.db.commit()
+        self.db.refresh(session)
+        return feedback.model_dump()
+
+    @staticmethod
+    def parse_candidate_feedback(session: InterviewSession) -> dict | None:
+        if not session.candidate_feedback_json:
+            return None
+        try:
+            return json.loads(session.candidate_feedback_json)
+        except Exception:
+            return None
 
     def get_status(self, session_id: int) -> dict:
         session = self.db.get(InterviewSession, session_id)
@@ -580,6 +615,44 @@ class InterviewService:
         if screening.decision_summary:
             lines.append(f"Screening decision: {screening.decision_summary}")
 
+        return "\n".join(lines)
+
+    def _build_candidate_experience_flywheel(self, job_id: int) -> str:
+        sessions = (
+            self.db.query(InterviewSession)
+            .filter(
+                InterviewSession.job_id == job_id,
+                InterviewSession.status == "completed",
+                InterviewSession.candidate_feedback_json.isnot(None),
+            )
+            .order_by(InterviewSession.updated_at.desc())
+            .limit(5)
+            .all()
+        )
+        feedbacks: list[dict] = []
+        for s in sessions:
+            fb = self.parse_candidate_feedback(s)
+            if fb:
+                feedbacks.append(fb)
+        if not feedbacks:
+            return ""
+
+        ratings = [f["rating"] for f in feedbacks if f.get("rating") is not None]
+        avg = sum(ratings) / len(ratings) if ratings else 0.0
+        comments = [
+            f.get("comment", "").strip() for f in feedbacks if f.get("comment", "").strip()
+        ]
+        lines = [
+            "=== Prior candidate experience (flywheel) ===",
+            f"Average experience rating (last {len(feedbacks)}): {avg:.1f}/5",
+        ]
+        if comments:
+            quoted = "; ".join(f'"{c[:80]}"' for c in comments[:5])
+            lines.append(f"Recent comments: {quoted}")
+        if avg <= 3:
+            lines.append(
+                "Guidance: if rating <= 3, prefer clearer questions and slightly warmer transitions."
+            )
         return "\n".join(lines)
 
     def _parse_structured(self, resume: Resume) -> ResumeStructured:

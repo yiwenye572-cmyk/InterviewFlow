@@ -92,6 +92,76 @@
       }).join("");
     }
 
+    function renderFeedbackSection(existing) {
+      if (existing) {
+        const stars = "★".repeat(existing.rating) + "☆".repeat(5 - existing.rating);
+        return `
+          <div class="report-section feedback-section">
+            <h3>您的面试体验反馈</h3>
+            <p class="feedback-thanks">感谢反馈！您的意见将帮助我们优化后续面试体验。</p>
+            <p><strong>评分：</strong><span class="star-display">${stars}</span> (${existing.rating}/5)</p>
+            ${existing.comment ? `<p><strong>简述：</strong>${escapeHtml(existing.comment)}</p>` : ""}
+            <p class="muted small">提交于 ${escapeHtml(existing.submitted_at || "—")}</p>
+          </div>`;
+      }
+      return `
+        <div class="report-section feedback-section" id="feedback-form-section">
+          <h3>评价本次面试体验</h3>
+          <p class="muted small">您的反馈不影响评分结果，将用于优化同岗位后续面试</p>
+          <div class="field">
+            <label>评分（1–5）</label>
+            <div class="rating-buttons" id="rating-buttons">
+              ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="btn btn-secondary btn-sm rating-btn" data-rating="${n}">${n}</button>`).join("")}
+            </div>
+            <input type="hidden" id="feedback-rating" value="" />
+          </div>
+          <div class="field">
+            <label for="feedback-comment">简述（可选，≤500 字）</label>
+            <textarea id="feedback-comment" rows="3" maxlength="500" placeholder="如：追问节奏、面试官语气、题目难度…"></textarea>
+          </div>
+          <button type="button" id="submit-feedback" class="btn btn-primary">提交反馈</button>
+        </div>`;
+    }
+
+    function wireFeedbackForm() {
+      const section = document.getElementById("feedback-form-section");
+      if (!section) return;
+
+      let selected = 0;
+      section.querySelectorAll(".rating-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selected = Number(btn.dataset.rating);
+          document.getElementById("feedback-rating").value = String(selected);
+          section.querySelectorAll(".rating-btn").forEach((b) => {
+            b.classList.toggle("btn-primary", Number(b.dataset.rating) === selected);
+            b.classList.toggle("btn-secondary", Number(b.dataset.rating) !== selected);
+          });
+        });
+      });
+
+      document.getElementById("submit-feedback").addEventListener("click", async () => {
+        if (!selected) {
+          showToast("请选择 1–5 分", true);
+          return;
+        }
+        const comment = document.getElementById("feedback-comment").value.trim();
+        const btn = document.getElementById("submit-feedback");
+        btn.disabled = true;
+        try {
+          await apiRequest(`/api/interview/${sessionId}/feedback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rating: selected, comment: comment || null }),
+          });
+          showToast("反馈已提交，谢谢！");
+          loadReport();
+        } catch (err) {
+          showToast(err.message, true);
+          btn.disabled = false;
+        }
+      });
+    }
+
     async function loadReport() {
       if (!sessionId) {
         container.innerHTML = "<p>缺少 session_id</p>";
@@ -108,6 +178,7 @@
         const rec = reportData.overall_recommendation || "hold";
         const evalLog = data.evaluations_log || [];
         const timeline = data.score_timeline || [];
+        const candidateFeedback = data.candidate_feedback || null;
         const live = reportData.live_snapshot || {};
         const dims = reportData.dimension_scores || {};
         const dimHtml = Object.keys(dimLabels).map((k) =>
@@ -178,7 +249,9 @@
           <div class="report-section">
             <h3>面试过程摘要</h3>
             ${evalHtml}
-          </div>`;
+          </div>
+          ${renderFeedbackSection(candidateFeedback)}`;
+        wireFeedbackForm();
       } catch (err) {
         container.innerHTML = `<p style="color:var(--danger)">${escapeHtml(err.message)}</p>`;
       }

@@ -96,6 +96,12 @@ class InterviewConfig(BaseModel):
     standardized_question_limit: int = Field(default=5, ge=1, le=15)
 
 
+class CandidateInterviewFeedback(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=500)
+    submitted_at: str = ""
+
+
 class ScoreReviewResult(BaseModel):
     adjusted_partial_score: int = Field(ge=0, le=100)
     confidence: float = Field(default=0.7, ge=0.0, le=1.0)

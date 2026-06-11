@@ -585,6 +585,11 @@ th {
 .clickable-row { cursor: pointer; }
 .clickable-row:hover { background: #f1f5f9; }
 
+.rating-buttons { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.35rem 0; }
+.feedback-section { border-top: 1px solid var(--border); padding-top: 1rem; }
+.feedback-thanks { color: var(--success); margin-bottom: 0.5rem; }
+.star-display { color: #f59e0b; letter-spacing: 0.1em; }
+
 @media (max-width: 640px) {
   .container { padding: 1rem; }
   table { font-size: 0.8rem; }

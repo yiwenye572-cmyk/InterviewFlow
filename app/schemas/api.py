@@ -114,6 +114,18 @@ class ReportResponse(BaseModel):
     report: dict | None = None
     evaluations_log: list[dict] | None = None
     score_timeline: list[dict] | None = None
+    candidate_feedback: dict | None = None
+
+
+class CandidateFeedbackRequest(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=500)
+
+
+class CandidateFeedbackResponse(BaseModel):
+    session_id: int
+    submitted: bool = True
+    feedback: dict
 
 
 class JobListItem(BaseModel):
