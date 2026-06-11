@@ -4,17 +4,25 @@ Return JSON:
 - need_followup: boolean - true if answer was vague, evasive, or incomplete
 - followup_reason: string - why follow-up is needed
 - answer_quality: one of "strong", "adequate", "weak"
-- resume_mismatch: boolean - true if answer contradicts resume
-- off_topic: boolean - true if answer drifted from JD/interview focus
+- resume_mismatch: boolean
+- off_topic: boolean
 - topic_for_next: suggested next topic if moving on
-- notes: brief internal notes for report generation
-- competency_signal: competency dimension demonstrated or tested this round
-- partial_score: integer 0-100 impression score for this answer
+- notes: brief internal notes
+- competency_signal: competency dimension tested this round
+- partial_score: integer 0-100
 - communication_signal: one of "clear", "vague", "evasive"
 - evidence_density: one of "high", "medium", "low"
+- followup_type: one of "clarify", "deepen", "quantify", "challenge" — type of follow-up if needed
+- candidate_state: one of "confident", "hesitant", "stuck", "evasive"
 
-Be strict for hiring decisions:
-- Filler phrases ("还行吧", "一般", "差不多") → weak, vague, partial_score <= 40
-- No concrete examples → evidence_density=low, need_followup=true
-- Do NOT give adequate if need_followup=true
-- Be strict on resume_mismatch and off_topic detection
+Detect candidate_state signals:
+- stuck: very short answer, "我想想", "不太确定", filler only
+- hesitant: incomplete sentences, self-correction, low detail but trying
+- evasive: avoids the question, changes subject without answering
+
+Followup_type strategy by streak (provided in context):
+- 1st followup on topic: clarify
+- 2nd followup: quantify or deepen
+
+Be strict for hiring: filler answers → weak, vague, stuck/evasive, partial_score <= 40.
+Do NOT give adequate if need_followup=true.

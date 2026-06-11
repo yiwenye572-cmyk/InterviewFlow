@@ -37,14 +37,54 @@
 
   <!-- Persona modal -->
   <div id="persona-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center;">
-    <div class="card" style="max-width:420px; width:90%; margin:0;">
-      <h2>选择面试官风格</h2>
+    <div class="card" style="max-width:480px; width:90%; margin:0; max-height:90vh; overflow-y:auto;">
+      <h2>配置模拟面试</h2>
+      <p class="muted small">招聘方视角 · 支持自适应与标准化两种模式</p>
+      <div class="field">
+        <label for="mode-select">面试模式</label>
+        <select id="mode-select">
+          <option value="adaptive">自适应（动态追问）</option>
+          <option value="standardized">标准化（固定题序）</option>
+        </select>
+      </div>
       <div class="field">
         <label for="persona-select">面试官人设</label>
         <select id="persona-select">
           <option value="tech_lead">严厉的技术总监</option>
           <option value="hr_friendly">亲切的 HR</option>
         </select>
+      </div>
+      <div class="field">
+        <label for="role-title">面试官身份（可选）</label>
+        <input type="text" id="role-title" placeholder="如：后端技术总监" />
+      </div>
+      <div class="field">
+        <label for="difficulty-select">难度</label>
+        <select id="difficulty-select">
+          <option value="easy">简单</option>
+          <option value="medium" selected>中等</option>
+          <option value="hard">困难</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="strictness-range">严厉度 <span id="strictness-val">3</span></label>
+        <input type="range" id="strictness-range" min="1" max="5" value="3" />
+      </div>
+      <div class="field">
+        <label for="warmth-range">亲和度 <span id="warmth-val">3</span></label>
+        <input type="range" id="warmth-range" min="1" max="5" value="3" />
+      </div>
+      <div class="field">
+        <label for="followup-max">每题最多追问</label>
+        <select id="followup-max">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="enable-encouragement" /> 启用鼓励话术（卡顿/紧张时）</label>
       </div>
       <div class="actions">
         <button id="cancel-interview" class="btn btn-secondary">取消</button>

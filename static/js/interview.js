@@ -26,8 +26,24 @@ const phaseLabel = {
   closing: "收尾",
 };
 
+const modeLabel = {
+  adaptive: "自适应",
+  standardized: "标准化",
+};
+
+const difficultyLabel = {
+  easy: "简单",
+  medium: "中等",
+  hard: "困难",
+};
+
+const urlMode = getQueryParam("mode");
 document.getElementById("meta-persona").textContent =
   `面试官：${personaLabel[persona] || persona}`;
+if (urlMode) {
+  document.getElementById("meta-mode").textContent =
+    `模式：${modeLabel[urlMode] || urlMode}`;
+}
 
 function appendMessage(role, content, streaming = false) {
   const div = document.createElement("div");
@@ -78,6 +94,15 @@ function escapeHtml(text) {
 }
 
 function updateMeta(status) {
+  if (status.interview_mode) {
+    document.getElementById("meta-mode").textContent =
+      `模式：${modeLabel[status.interview_mode] || status.interview_mode}`;
+  }
+  const cfg = status.interview_config || {};
+  if (cfg.difficulty) {
+    document.getElementById("meta-difficulty").textContent =
+      `难度：${difficultyLabel[cfg.difficulty] || cfg.difficulty}`;
+  }
   if (status.phase) {
     document.getElementById("meta-phase").textContent =
       `阶段：${phaseLabel[status.phase] || status.phase}`;

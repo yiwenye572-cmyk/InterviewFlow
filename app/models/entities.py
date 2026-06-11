@@ -93,6 +93,10 @@ class InterviewSession(Base):
     followup_streak: Mapped[int] = mapped_column(Integer, default=0)
     current_topic: Mapped[str | None] = mapped_column(String(512), nullable=True)
     competency_status_json: Mapped[str] = mapped_column(Text, default="{}")
+    interview_config_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    question_queue_json: Mapped[str] = mapped_column(Text, default="[]")
+    question_index: Mapped[int] = mapped_column(Integer, default=0)
+    encouraged_this_round: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

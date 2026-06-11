@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.resume_structured import FollowupQuestion, InterviewQuestion
+from app.schemas.resume_structured import FollowupQuestion, InterviewConfig, InterviewQuestion
 
 
 class JobResponse(BaseModel):
@@ -66,12 +66,14 @@ class InterviewStartRequest(BaseModel):
     job_id: int
     resume_id: int
     persona: str = Field(default="tech_lead", pattern="^(tech_lead|hr_friendly)$")
+    config: InterviewConfig | None = None
 
 
 class InterviewStartResponse(BaseModel):
     session_id: int
     persona: str
     status: str
+    interview_mode: str = "adaptive"
 
 
 class InterviewMessageRequest(BaseModel):
@@ -96,6 +98,9 @@ class InterviewStatusResponse(BaseModel):
     competencies_planned: list[str] = Field(default_factory=list)
     competency_status: dict[str, str] = Field(default_factory=dict)
     followup_streak: int = 0
+    interview_mode: str = "adaptive"
+    interview_config: dict = Field(default_factory=dict)
+    question_index: int = 0
 
 
 class InterviewMessagesResponse(BaseModel):

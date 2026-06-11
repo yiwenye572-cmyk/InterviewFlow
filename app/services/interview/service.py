@@ -7,16 +7,19 @@ from app.config import get_settings
 from app.models.entities import InterviewMessage, InterviewSession, Job, Resume, ScreeningResult
 from app.schemas.resume_structured import (
     FollowupPack,
+    InterviewConfig,
     JDStructured,
     LiveAssessment,
     QuestionPack,
     ResumeStructured,
 )
+from app.services.interview.config import resolve_interview_config
 from app.services.interview.nodes import (
     InterviewGraphState,
     build_init_graph,
     build_post_answer_graph,
     closing_node,
+    stream_encouragement,
     stream_followup,
     stream_opening,
     stream_question,
@@ -34,13 +37,23 @@ class InterviewService:
         self.db = db
         self.settings = get_settings()
 
-    def start_session(self, job_id: int, resume_id: int, persona: str) -> InterviewSession:
+    def start_session(
+        self,
+        job_id: int,
+        resume_id: int,
+        persona: str,
+        config: InterviewConfig | None = None,
+    ) -> InterviewSession:
         job = self.db.get(Job, job_id)
         resume = self.db.get(Resume, resume_id)
         if not job or not resume or resume.job_id != job_id:
             raise ValueError("Invalid job_id or resume_id")
 
+        interview_config = resolve_interview_config(persona, config)
         competencies_planned, followup_queue = self._load_a_layer_seeds(job.id, resume.id, job)
+        question_queue = self._load_question_queue(
+            job.id, resume.id, job, competencies_planned, interview_config
+        )
         template = load_template(job.template_id) or load_template(
             infer_template_id(job.title, job.raw_text)
         )
@@ -54,13 +67,17 @@ class InterviewService:
         session = InterviewSession(
             job_id=job_id,
             resume_id=resume_id,
-            persona=persona,
+            persona=interview_config.persona,
             status="active",
             pending_action="stream_opening",
             phase="opening",
             competencies_planned_json=json.dumps(competencies_planned, ensure_ascii=False),
             followup_queue_json=json.dumps(followup_queue, ensure_ascii=False),
             competency_status_json=json.dumps(competency_status, ensure_ascii=False),
+            interview_config_json=interview_config.model_dump_json(ensure_ascii=False),
+            question_queue_json=json.dumps(question_queue, ensure_ascii=False),
+            question_index=0,
+            encouraged_this_round=False,
         )
         self.db.add(session)
         self.db.flush()
@@ -139,6 +156,17 @@ class InterviewService:
             self.db.commit()
             return
 
+        if action == "stream_encouragement":
+            full = ""
+            for chunk in stream_encouragement(state):
+                full += chunk
+                yield chunk
+            self._save_message(session.id, "assistant", full)
+            session.pending_action = "wait_answer"
+            session.encouraged_this_round = True
+            self.db.commit()
+            return
+
         if action == "stream_question":
             full = ""
             for chunk in stream_question(state):
@@ -158,6 +186,14 @@ class InterviewService:
                 if target not in covered:
                     covered.append(target)
                     session.competencies_covered_json = json.dumps(covered, ensure_ascii=False)
+            config = {}
+            if session.interview_config_json:
+                try:
+                    config = json.loads(session.interview_config_json)
+                except Exception:
+                    pass
+            if config.get("interview_mode") == "standardized":
+                session.question_index = (session.question_index or 0) + 1
             self.db.commit()
             return
 
@@ -233,6 +269,12 @@ class InterviewService:
         session = self.db.get(InterviewSession, session_id)
         if not session:
             raise ValueError("Session not found")
+        config = {}
+        if session.interview_config_json:
+            try:
+                config = json.loads(session.interview_config_json)
+            except Exception:
+                pass
         return {
             "session_id": session.id,
             "status": session.status,
@@ -243,6 +285,9 @@ class InterviewService:
             "competencies_planned": json.loads(session.competencies_planned_json or "[]"),
             "competency_status": json.loads(session.competency_status_json or "{}"),
             "followup_streak": session.followup_streak,
+            "interview_mode": config.get("interview_mode", "adaptive"),
+            "interview_config": config,
+            "question_index": session.question_index,
         }
 
     def get_messages(self, session_id: int) -> list[dict[str, str]]:
@@ -283,6 +328,10 @@ class InterviewService:
             )
         if state.get("topic_plan"):
             session.topic_plan_json = json.dumps(state["topic_plan"], ensure_ascii=False)
+        session.question_index = state.get("question_index", session.question_index)
+        session.encouraged_this_round = state.get(
+            "encouraged_this_round", session.encouraged_this_round
+        )
         session.pending_action = state.get("next_action", "stream_question")
 
     def _apply_feedback_loop(self, resume: Resume, report, session: InterviewSession) -> None:
@@ -339,6 +388,60 @@ class InterviewService:
 
         return competencies, followup_queue
 
+    def _load_question_queue(
+        self,
+        job_id: int,
+        resume_id: int,
+        job: Job,
+        competencies: list[str],
+        config: InterviewConfig,
+    ) -> list[dict]:
+        queue: list[dict] = []
+        screening = (
+            self.db.query(ScreeningResult)
+            .filter(
+                ScreeningResult.job_id == job_id,
+                ScreeningResult.resume_id == resume_id,
+            )
+            .first()
+        )
+        if screening and screening.questions_json:
+            try:
+                pack = QuestionPack.model_validate_json(screening.questions_json)
+                queue = [
+                    {
+                        "question": q.question,
+                        "competency": q.competency or "general",
+                        "rubric": q.rubric,
+                    }
+                    for q in pack.items[: config.standardized_question_limit]
+                ]
+            except Exception:
+                pass
+        if not queue and competencies:
+            for comp in competencies[: config.standardized_question_limit]:
+                queue.append(
+                    {
+                        "question": f"请结合你的经历，详细说明你在「{comp}」方面的能力与案例。",
+                        "competency": comp,
+                        "rubric": "",
+                    }
+                )
+        if not queue and job.structured_json:
+            try:
+                jd = JDStructured.model_validate_json(job.structured_json)
+                for skill in jd.required_skills[: config.standardized_question_limit]:
+                    queue.append(
+                        {
+                            "question": f"请介绍你在 {skill} 方面的实践经验。",
+                            "competency": skill,
+                            "rubric": "",
+                        }
+                    )
+            except Exception:
+                pass
+        return queue
+
     def _get_active_session(self, session_id: int) -> InterviewSession:
         session = self.db.get(InterviewSession, session_id)
         if not session:
@@ -385,6 +488,9 @@ class InterviewService:
             structured=structured.model_dump(),
             persona=session.persona,
             persona_prompt=session.persona_prompt or "",
+            interview_config=json.loads(session.interview_config_json or "{}")
+            if session.interview_config_json
+            else InterviewConfig(persona=session.persona).model_dump(),
             running_summary=session.running_summary or "",
             round_count=session.round_count,
             max_rounds=self.settings.max_interview_rounds,
@@ -404,6 +510,9 @@ class InterviewService:
             last_evaluation=last_eval,
             a_layer_context=a_layer_brief,
             rubric_context=self._rubric_context(job),
+            question_queue=json.loads(session.question_queue_json or "[]"),
+            question_index=session.question_index or 0,
+            encouraged_this_round=session.encouraged_this_round or False,
         )
 
     def _rubric_context(self, job: Job) -> str:

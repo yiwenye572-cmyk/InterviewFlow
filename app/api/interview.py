@@ -27,12 +27,19 @@ def start_interview(payload: InterviewStartRequest, db: Session = Depends(get_db
     service = InterviewService(db)
     try:
         session = service.start_session(
-            payload.job_id, payload.resume_id, payload.persona
+            payload.job_id, payload.resume_id, payload.persona, payload.config
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    mode = "adaptive"
+    if session.interview_config_json:
+        try:
+            mode = json.loads(session.interview_config_json).get("interview_mode", "adaptive")
+        except Exception:
+            pass
     return InterviewStartResponse(
-        session_id=session.id, persona=session.persona, status=session.status
+        session_id=session.id, persona=session.persona, status=session.status,
+        interview_mode=mode,
     )
 
 

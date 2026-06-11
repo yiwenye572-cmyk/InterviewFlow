@@ -65,8 +65,17 @@ flowchart LR
 ```
 InitPersona → StreamOpening → WaitAnswer
   → EvaluateAnswer → ScoreReview → RouteDecision
-    → FollowUpQuestion | PlanNextTopic → AskQuestion | StreamClosing → GenerateReport
+    → StreamEncouragement | FollowUpQuestion | PlanNextTopic → AskQuestion | StreamClosing → GenerateReport
 ```
+
+**双面试模式**（`InterviewConfig.interview_mode`）：
+
+| 模式 | 适用场景 | 行为 |
+|------|----------|------|
+| `adaptive`（默认） | 深度评估、个性化追问 | TopicPlanner + A 层种子 + 动态追问 |
+| `standardized` | 同岗公平比对、批量初筛 | 固定 QuestionPack 题序 + 每题固定 N 次追问 |
+
+启动时可传完整 `InterviewConfig`（模式、人设、难度、严厉度/亲和度、追问上限、鼓励话术开关等），筛选页弹窗与 `POST /api/interview/start` 均支持。
 
 **REST + SSE 映射**：
 
@@ -82,8 +91,29 @@ InitPersona → StreamOpening → WaitAnswer
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/interview/{id}/live` | 实时评估快照 |
-| GET | `/api/interview/{id}/status` | phase、轮次、考察点覆盖 |
+| GET | `/api/interview/{id}/status` | phase、轮次、考察点覆盖、interview_mode/config |
 | GET | `/api/interview/{id}/messages` | 历史消息（刷新恢复） |
+
+### 面试编排规则
+
+#### Adaptive（自适应，默认）
+
+- **追问上限**：由 `InterviewConfig.max_followup_streak` 控制（0–3，默认 2）；同一话题连续追问达上限后强制换题，并将该考察点标记为 `at_risk`。
+- **换题逻辑**：`TopicPlanner` 结合 phase、competencies 覆盖、A 层 followup 种子与 `force_new_topic` 信号规划下一话题；不因候选人答得快/慢而跳题。
+- **阶段推进**：opening → technical → project → behavioral → closing，由轮次与覆盖度共同驱动。
+- **评估字段**：Evaluate 输出 `followup_type`（clarify / deepen / quantify / challenge）与 `candidate_state`（confident / hesitant / stuck / evasive），追问 prompt 引用原话做自然承接。
+
+#### Standardized（标准化）
+
+- **题序固定**：启动时从 A 层 `QuestionPack` 预加载 `question_queue`（无 pack 时降级为 JD/competencies 固定列表）。
+- **索引递增**：每输出一道新题（`stream_question`）`question_index += 1`；达 `standardized_question_limit` 或队列耗尽后进入 closing。
+- **追问次数固定**：每题同样受 `max_followup_streak` 约束，但不调用 LLM TopicPlanner 换题。
+- **公平性叙事**：同岗候选人面对相同主题顺序与追问配额，便于横向比对。
+
+#### 鼓励话术与评分隔离
+
+- 当 `candidate_state` 为 `hesitant` 或 `stuck`，且 `enable_encouragement=True` 时，路由至 `stream_encouragement`（每轮 evaluate 最多一次）。
+- **Calibrator 不参与**鼓励消息；鼓励话术不抬高 Live/Final 分数。`hr_friendly` 默认开启，`tech_lead` 默认关闭。
 
 ## 架构
 
@@ -170,8 +200,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `question_generate.txt` | ≥10 道预生成面试题 |
 | `persona_init.txt` | PersonaProfile 结构化人设 |
 | `opening_message.txt` | LLM 化风格化开场 |
-| `followup_question.txt` | 同话题深度追问 |
-| `topic_planner.txt` | 阶段与下一话题规划 |
+| `followup_question.txt` | 同话题深度追问（引用原话承接） |
+| `encouragement_message.txt` | 卡顿/紧张时 1–2 句鼓励（不影响评分） |
+| `topic_planner.txt` | 阶段与下一话题规划（adaptive） |
 | `ask_question.txt` | 新话题动态提问 |
 | `score_review.txt` | Calibrator：校准分数与 confidence |
 | `evaluate_answer.txt` | 静默评估：沟通信号/证据密度/招聘方严格标准 |

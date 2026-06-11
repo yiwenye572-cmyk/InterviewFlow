@@ -157,6 +157,105 @@ def main() -> None:
         fail("hr opening too short")
     ok(f"hr_friendly opening ({len(hr_opening)} chars)")
 
+    hr_status = requests.get(f"{BASE}/api/interview/{hr_session}/status", timeout=10).json()
+    if not hr_status.get("interview_config", {}).get("enable_encouragement"):
+        fail("hr_friendly default enable_encouragement should be True")
+    ok("hr_friendly default enable_encouragement=True")
+
+    print("[....] tech_lead encouragement default...")
+    r = requests.post(
+        f"{BASE}/api/interview/start",
+        json={"job_id": job_id, "resume_id": resume_id, "persona": "tech_lead"},
+        timeout=120,
+    )
+    tech_session = r.json()["session_id"]
+    consume_sse(tech_session)
+    tech_status = requests.get(f"{BASE}/api/interview/{tech_session}/status", timeout=10).json()
+    if tech_status.get("interview_config", {}).get("enable_encouragement"):
+        fail("tech_lead default enable_encouragement should be False")
+    ok("tech_lead default enable_encouragement=False")
+
+    print("[....] encouragement on hesitant/stuck answer (hr)...")
+    body = run_interview_round(hr_session, "嗯…")
+    if body.get("pending_action") != "stream_encouragement":
+        fail(f"hr short answer should trigger stream_encouragement, got {body.get('pending_action')}")
+    comm_after_enc = (body.get("live_assessment") or {}).get("provisional_communication", 100)
+    ok(f"hr stuck answer → stream_encouragement comm={comm_after_enc}")
+
+    print("[....] tech_lead skips encouragement...")
+    body = run_interview_round(tech_session, "嗯…")
+    if body.get("pending_action") == "stream_encouragement":
+        fail("tech_lead should not stream_encouragement when disabled")
+    ok(f"tech short answer pending={body.get('pending_action')} (not encouragement)")
+
+    print("[....] followup_type in evaluations_log...")
+    r = requests.post(
+        f"{BASE}/api/interview/start",
+        json={"job_id": job_id, "resume_id": resume_id, "persona": "tech_lead"},
+        timeout=120,
+    )
+    eval_session = r.json()["session_id"]
+    consume_sse(eval_session)
+    run_interview_round(
+        eval_session,
+        "我有4年后端经验，主导过 FastAPI 微服务拆分，接口 P99 从 800ms 降到 120ms。",
+    )
+    r = requests.post(f"{BASE}/api/interview/{eval_session}/end", timeout=300)
+    evals = r.json().get("evaluations_log") or []
+    if not evals:
+        fail("evaluations_log empty after round")
+    if not evals[0].get("followup_type"):
+        fail("followup_type missing from evaluation")
+    if not evals[0].get("candidate_state"):
+        fail("candidate_state missing from evaluation")
+    ok(f"followup_type={evals[0]['followup_type']} candidate_state={evals[0]['candidate_state']}")
+
+    print("[....] standardized mode fixed question order...")
+    r = requests.post(
+        f"{BASE}/api/interview/start",
+        json={
+            "job_id": job_id,
+            "resume_id": resume_id,
+            "persona": "tech_lead",
+            "config": {
+                "interview_mode": "standardized",
+                "persona": "tech_lead",
+                "max_followup_streak": 0,
+                "enable_encouragement": False,
+                "standardized_question_limit": 3,
+            },
+        },
+        timeout=120,
+    )
+    if r.status_code != 200:
+        fail(f"standardized start {r.status_code}: {r.text[:500]}")
+    std_session = r.json()["session_id"]
+    if r.json().get("interview_mode") != "standardized":
+        fail(f"start response interview_mode={r.json().get('interview_mode')}")
+    consume_sse(std_session)
+    std_status = requests.get(f"{BASE}/api/interview/{std_session}/status", timeout=10).json()
+    if std_status.get("question_index", -1) != 0:
+        fail(f"question_index should start at 0, got {std_status.get('question_index')}")
+    ok("standardized session started question_index=0")
+
+    answers = [
+        "第一题：我用 FastAPI 做过 REST API，配合 Pydantic 做校验，部署在 K8s 上。",
+        "第二题：数据库用过 PostgreSQL 与 Redis，做过读写分离与缓存穿透治理。",
+        "第三题：团队协作采用 Git Flow，Code Review 与 CI 流水线保证质量。",
+    ]
+    last_idx = 0
+    for ans in answers:
+        run_interview_round(std_session, ans)
+        st = requests.get(f"{BASE}/api/interview/{std_session}/status", timeout=10).json()
+        idx = st.get("question_index", 0)
+        if idx <= last_idx:
+            fail(f"question_index should increase, was {last_idx} now {idx}")
+        last_idx = idx
+        ok(f"standardized round question_index={idx}")
+    if last_idx < 1:
+        fail("standardized mode did not advance question_index")
+    ok(f"standardized mode advanced to question_index={last_idx}")
+
     print("[....] end + report...")
     t0 = time.time()
     r = requests.post(f"{BASE}/api/interview/{session_id}/end", timeout=300)

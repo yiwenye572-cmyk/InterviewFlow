@@ -80,6 +80,20 @@ class AnswerEvaluation(BaseModel):
     partial_score: int = Field(default=60, ge=0, le=100)
     communication_signal: str = "clear"
     evidence_density: str = "medium"
+    followup_type: str = "clarify"
+    candidate_state: str = "confident"
+
+
+class InterviewConfig(BaseModel):
+    interview_mode: str = "adaptive"
+    persona: str = "tech_lead"
+    role_title: str = ""
+    strictness: int = Field(default=3, ge=1, le=5)
+    warmth: int = Field(default=3, ge=1, le=5)
+    difficulty: str = "medium"
+    max_followup_streak: int = Field(default=2, ge=0, le=3)
+    enable_encouragement: bool = True
+    standardized_question_limit: int = Field(default=5, ge=1, le=15)
 
 
 class ScoreReviewResult(BaseModel):

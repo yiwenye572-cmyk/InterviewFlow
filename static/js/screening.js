@@ -141,6 +141,16 @@ async function loadResults() {
     document.querySelectorAll(".start-interview").forEach((btn) => {
       btn.addEventListener("click", () => {
         pendingResumeId = btn.dataset.resumeId;
+        document.getElementById("mode-select").value = "adaptive";
+        document.getElementById("persona-select").value = "tech_lead";
+        document.getElementById("role-title").value = "";
+        document.getElementById("difficulty-select").value = "medium";
+        document.getElementById("strictness-range").value = "3";
+        document.getElementById("strictness-val").textContent = "3";
+        document.getElementById("warmth-range").value = "3";
+        document.getElementById("warmth-val").textContent = "3";
+        document.getElementById("followup-max").value = "2";
+        document.getElementById("enable-encouragement").checked = false;
         modal.style.display = "flex";
       });
     });
@@ -192,9 +202,37 @@ document.getElementById("cancel-interview").addEventListener("click", () => {
   pendingResumeId = null;
 });
 
+document.getElementById("persona-select").addEventListener("change", (e) => {
+  const enc = document.getElementById("enable-encouragement");
+  enc.checked = e.target.value === "hr_friendly";
+});
+
+document.getElementById("strictness-range").addEventListener("input", (e) => {
+  document.getElementById("strictness-val").textContent = e.target.value;
+});
+document.getElementById("warmth-range").addEventListener("input", (e) => {
+  document.getElementById("warmth-val").textContent = e.target.value;
+});
+
+function buildInterviewConfig() {
+  const persona = document.getElementById("persona-select").value;
+  return {
+    interview_mode: document.getElementById("mode-select").value,
+    persona,
+    role_title: document.getElementById("role-title").value.trim(),
+    strictness: Number(document.getElementById("strictness-range").value),
+    warmth: Number(document.getElementById("warmth-range").value),
+    difficulty: document.getElementById("difficulty-select").value,
+    max_followup_streak: Number(document.getElementById("followup-max").value),
+    enable_encouragement: document.getElementById("enable-encouragement").checked,
+    standardized_question_limit: 5,
+  };
+}
+
 document.getElementById("confirm-interview").addEventListener("click", async () => {
   if (!pendingResumeId) return;
   const persona = document.getElementById("persona-select").value;
+  const config = buildInterviewConfig();
   const btn = document.getElementById("confirm-interview");
   btn.disabled = true;
 
@@ -206,9 +244,11 @@ document.getElementById("confirm-interview").addEventListener("click", async () 
         job_id: Number(jobId),
         resume_id: Number(pendingResumeId),
         persona,
+        config,
       }),
     });
-    window.location.href = `/interview.html?session_id=${session.session_id}&persona=${persona}`;
+    const mode = session.interview_mode || config.interview_mode;
+    window.location.href = `/interview.html?session_id=${session.session_id}&persona=${persona}&mode=${mode}`;
   } catch (err) {
     showToast(err.message, true);
     btn.disabled = false;
