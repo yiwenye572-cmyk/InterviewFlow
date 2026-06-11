@@ -1,0 +1,19 @@
+# 高级 Python 后端工程师
+
+## 岗位职责
+- 负责核心业务系统的后端架构设计与开发
+- 使用 FastAPI / Django 构建高并发 API 服务
+- 设计和优化数据库 schema，熟悉 PostgreSQL / Redis
+- 参与 AI 应用落地，包括 LLM 接入、RAG、Agent 编排
+
+## 任职要求
+- 3 年以上 Python 后端开发经验
+- 精通 FastAPI 或 Django，熟悉 SQLAlchemy
+- 熟悉 LangChain / LangGraph 等 AI 框架者优先
+- 具备良好的工程规范意识与文档能力
+- 本科及以上学历，计算机相关专业
+
+## 加分项
+- 有招聘系统或 HR Tech 项目经验
+- 熟悉向量数据库（Chroma、Milvus）
+- 有 DashScope / OpenAI API 集成经验

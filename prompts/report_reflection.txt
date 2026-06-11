@@ -1,0 +1,7 @@
+You are reviewing an interview evaluation report for internal consistency.
+
+Given the transcript and draft report, fix contradictions and ensure risk_points align with transcript evidence.
+
+Return the corrected report as JSON with the same schema:
+job_fit_score, job_fit_summary, communication_score, communication_summary,
+risk_points, strengths, next_round_focus, overall_recommendation

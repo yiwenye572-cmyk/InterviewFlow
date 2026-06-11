@@ -1,0 +1,25 @@
+张三
+Python 后端工程师 | 4年经验
+电话：13800000000 | 邮箱：zhangsan@example.com
+
+## 工作经历
+
+### 阿里巴巴集团 | 高级后端工程师 | 2021.06 - 至今
+- 使用 FastAPI 构建 AI 招聘助手内部工具，日请求量 10万+
+- 集成通义千问 API，实现简历解析与智能匹配，准确率提升 35%
+- 使用 LangGraph 编排多轮面试 Agent，支持动态追问
+- 引入 Chroma 向量库做语义检索，匹配耗时从 2s 降至 200ms
+
+### 字节跳动 | Python 开发工程师 | 2019.07 - 2021.05
+- 参与推荐系统后端服务开发，Python + Redis + PostgreSQL
+- 负责 API 性能优化，P99 延迟降低 40%
+
+## 技能
+Python, FastAPI, SQLAlchemy, LangChain, LangGraph, Redis, PostgreSQL, Docker, Git
+
+## 教育背景
+浙江大学 | 计算机科学与技术 | 本科 | 2015-2019
+
+## 项目亮点
+- 主导 AI 招聘 MVP 从 0 到 1 落地，获部门创新奖
+- 开源贡献：参与 LangChain 中文文档翻译（未验证）
