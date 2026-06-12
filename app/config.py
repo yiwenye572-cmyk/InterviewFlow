@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     resume_validation_score_penalty: float = 5.0
     resume_validation_force_partial_severe: int = 2
 
+    stream_guard_enabled: bool = True
+    stream_guard_min_chars: int = 10
+    stream_guard_max_chars: int = 2000
+    stream_guard_llm_rewrite: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

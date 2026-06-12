@@ -337,6 +337,21 @@ python scripts/test_resume_validator.py   # 纯规则单测，不耗 API
 
 ---
 
+## 流式输出后验（Stream Guard）
+
+B 层开场 / 追问 / 提问在 SSE 下发前经 [`app/services/interview/stream_guard.py`](app/services/interview/stream_guard.py) 缓冲后验：
+
+- **规则检查**：长度、AI 自述、system 泄露、离题指令、是否含提问（开场/换题）
+- **人设漂移**：`tech_lead` vs `hr_friendly` 关键词检测
+- **失败策略**：可选 fast 模型重写 1 次 → 仍失败则 persona 模板兜底
+- **分工**：`input_guard` 拦截**候选人**输入；Stream Guard 校验**面试官**输出
+
+```bash
+python scripts/test_stream_guard.py   # mock 单测，不耗 API
+```
+
+---
+
 ## Docker 部署
 
 本地验证与服务器部署均使用项目根目录的 `docker-compose.yml`。容器内 uvicorn 监听 `8000`，宿主机映射为 **`127.0.0.1:8001`**（避开 MAEC-SYS 占用的 8000）。详见 [`服务器环境.md`](服务器环境.md) 端口说明。

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from typing import Generator
+from typing import Callable, Generator
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from app.services.interview.nodes import (
     stream_question,
 )
 from app.services.interview.input_guard import check_input
+from app.services.interview.stream_guard import StreamKind, ensure_stream_output
 from app.services.interview.report import compress_conversation_summary, generate_interview_report
 from app.services.job_templates import infer_template_id, load_template
 from app.services.rubric_parser import rubric_to_context
@@ -144,10 +145,9 @@ class InterviewService:
         state = self._build_state(session, job, resume)
 
         if action == "stream_opening":
-            full = ""
-            for chunk in stream_opening(state):
-                full += chunk
-                yield chunk
+            full = yield from self._yield_guarded_stream(
+                state, stream_opening, kind="opening"
+            )
             self._save_message(session.id, "assistant", full)
             session.pending_action = "wait_answer"
             session.phase = "opening"
@@ -155,10 +155,9 @@ class InterviewService:
             return
 
         if action == "stream_followup":
-            full = ""
-            for chunk in stream_followup(state):
-                full += chunk
-                yield chunk
+            full = yield from self._yield_guarded_stream(
+                state, stream_followup, kind="followup"
+            )
             self._save_message(session.id, "assistant", full)
             session.pending_action = "wait_answer"
             if not session.current_topic:
@@ -180,10 +179,9 @@ class InterviewService:
             return
 
         if action == "stream_question":
-            full = ""
-            for chunk in stream_question(state):
-                full += chunk
-                yield chunk
+            full = yield from self._yield_guarded_stream(
+                state, stream_question, kind="question"
+            )
             self._save_message(session.id, "assistant", full)
             session.pending_action = "wait_answer"
             plan = json.loads(session.topic_plan_json or "{}")
@@ -225,6 +223,27 @@ class InterviewService:
             return
 
         yield ""
+
+    def _yield_guarded_stream(
+        self,
+        state: InterviewGraphState,
+        stream_fn: Callable[[InterviewGraphState], Generator[str, None, None]],
+        *,
+        kind: StreamKind,
+    ) -> Generator[str, None, str]:
+        raw = "".join(stream_fn(state))
+        persona = str(state.get("persona") or "tech_lead")
+
+        if self.settings.stream_guard_enabled:
+            result = ensure_stream_output(raw, kind=kind, persona=persona, state=state)
+            text = result.text
+        else:
+            text = raw
+
+        chunk_size = 8
+        for i in range(0, len(text), chunk_size):
+            yield text[i : i + chunk_size]
+        return text
 
     def prepare_end_session(self, session_id: int) -> InterviewSession:
         session = self.db.get(InterviewSession, session_id)
