@@ -32,9 +32,23 @@
         </div>
         <div id="chat-window" class="chat-window"></div>
         <div id="typing-indicator" class="typing-indicator hidden">面试官正在输入…</div>
-        <div class="chat-input-row">
+        <div class="voice-transport-bar">
+          <label class="transport-toggle">
+            <input type="radio" name="transport" value="text" checked /> 文字
+          </label>
+          <label class="transport-toggle">
+            <input type="radio" name="transport" value="voice" /> 语音
+          </label>
+          <span id="voice-status" class="voice-status hidden"></span>
+        </div>
+        <div class="chat-input-row" id="text-input-row">
           <textarea id="user-input" placeholder="输入你的回答..." rows="2"></textarea>
           <button id="send-btn" class="btn btn-primary">发送</button>
+        </div>
+        <div class="chat-input-row hidden" id="voice-input-row">
+          <button id="hold-talk-btn" class="btn btn-primary btn-voice" type="button">
+            按住说话
+          </button>
         </div>
         <div class="actions">
           <button id="end-btn" class="btn btn-danger">结束面试并生成报告</button>

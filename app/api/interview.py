@@ -1,12 +1,14 @@
 import asyncio
+import base64
 import json
 from queue import Empty, Queue
 from threading import Thread
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import SessionLocal, get_db
 from app.schemas.api import (
     CandidateFeedbackRequest,
@@ -18,10 +20,13 @@ from app.schemas.api import (
     InterviewStartResponse,
     InterviewStatusResponse,
     ReportResponse,
+    VoiceTurnResponse,
 )
 from app.models.entities import InterviewSession
 from app.services.interview.service import InterviewService
 from app.services.interview.score_trace import build_score_timeline
+from app.services.voice.asr_client import transcribe_wav_async
+from app.services.voice.tts_client import synthesize_mp3
 
 router = APIRouter(prefix="/api/interview", tags=["interview"])
 
@@ -136,6 +141,91 @@ def send_message(
 
     return InterviewMessageResponse(
         session_id=session.id,
+        round_count=session.round_count,
+        phase=session.phase or "opening",
+        pending_action=session.pending_action,
+        live_assessment=live,
+    )
+
+
+def _collect_assistant_text(service: InterviewService, session_id: int) -> str:
+    parts: list[str] = []
+    for chunk in service.stream_pending(session_id):
+        if chunk:
+            parts.append(chunk)
+    return "".join(parts).strip()
+
+
+def _speaker_for_persona(persona: str) -> str:
+    settings = get_settings()
+    if persona == "tech_lead":
+        return settings.volc_tts_speaker_tech
+    return settings.volc_tts_speaker_hr
+
+
+@router.post("/{session_id}/voice/turn", response_model=VoiceTurnResponse)
+async def voice_turn(
+    session_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings()
+    if not settings.volc_speech_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Voice mode is not configured (VOLC_SPEECH_API_KEY missing)",
+        )
+
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    service = InterviewService(db)
+    session = db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    try:
+        transcript = await transcribe_wav_async(audio_bytes)
+    except Exception as exc:
+        msg = str(exc)
+        status = 400 if "empty transcript" in msg.lower() else 502
+        raise HTTPException(status_code=status, detail=f"ASR failed: {exc}") from exc
+
+    if not transcript.strip():
+        raise HTTPException(status_code=400, detail="Could not recognize speech")
+
+    try:
+        session = service.submit_answer(session_id, transcript.strip())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        assistant_text = _collect_assistant_text(service, session_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Interview stream failed: {exc}") from exc
+
+    if not assistant_text:
+        assistant_text = "（面试官暂无回复）"
+
+    speaker = _speaker_for_persona(session.persona or "hr_friendly")
+    try:
+        mp3_bytes = synthesize_mp3(assistant_text, speaker)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TTS failed: {exc}") from exc
+
+    live = None
+    if session.live_assessment_json:
+        try:
+            live = json.loads(session.live_assessment_json)
+        except Exception:
+            pass
+
+    return VoiceTurnResponse(
+        session_id=session.id,
+        transcript=transcript.strip(),
+        assistant_text=assistant_text,
+        audio_base64=base64.b64encode(mp3_bytes).decode("ascii") if mp3_bytes else "",
         round_count=session.round_count,
         phase=session.phase or "opening",
         pending_action=session.pending_action,

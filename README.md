@@ -160,6 +160,7 @@ FastAPI
 
 - Python 3.11+
 - 通义千问 DashScope API Key
+- （可选）火山引擎豆包语音 `X-Api-Key`，用于面试页语音模式
 
 ### 2. 安装
 
@@ -173,6 +174,10 @@ python -m venv .venv
 pip install -r requirements.txt
 cp .env.example .env
 # 编辑 .env，填入 DASHSCOPE_API_KEY
+# 语音模式（可选）：
+# VOLC_SPEECH_API_KEY=<新版控制台 X-Api-Key>
+# VOLC_ASR_RESOURCE_ID=volc.seedasr.sauc.duration
+# VOLC_TTS_RESOURCE_ID=seed-tts-2.0
 ```
 
 ### 3. 启动
@@ -210,6 +215,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | POST | `/api/interview/start` | 开始面试 |
 | GET | `/api/interview/{id}/stream` | SSE 流式输出 |
 | POST | `/api/interview/{id}/message` | 提交回答（含 live_assessment） |
+| POST | `/api/interview/{id}/voice/turn` | 语音一轮：wav → ASR → LangGraph → TTS（返回 transcript + 文字 + mp3 base64） |
 | GET | `/api/interview/{id}/live` | 实时评估快照 |
 | GET | `/api/interview/{id}/status` | 面试状态 |
 | GET | `/api/interview/{id}/messages` | 历史消息 |
@@ -258,6 +264,12 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### 4. 混合匹配分
 - 语义分（Chroma cosine × 40%）+ LLM rubric 分（× 60%）
 - 双阈值：`final_score >= 60` 且 `recommend_interview=true` 标记为「推荐面试」；未推荐仍可进入模拟面试体验 B 层 Agent
+
+### 5. 语音面试 MVP（P2）
+- 面试页可切换 **文字 / 语音**；语音模式按住说话，松手提交 16 kHz WAV
+- 后端：`openspeech` ASR WebSocket（`bigmodel_nostream`）→ 现有 `submit_answer` + LangGraph → TTS HTTP SSE
+- 鉴权：新版控制台仅需 `X-Api-Key`（`VOLC_SPEECH_API_KEY`），无需 AppId / Access Token
+- 文本模式仍为默认；未配置语音 Key 时 `/voice/turn` 返回 503，不影响文字面试
 
 ## Demo 视频脚本（≥2 分钟）
 

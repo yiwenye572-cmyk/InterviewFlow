@@ -1,4 +1,9 @@
 import { showToast, apiRequest, getQueryParam } from "/static/js/api.js";
+import {
+  startRecording,
+  stopRecording,
+  isRecordingSupported,
+} from "/static/js/wav-recorder.js";
 
 const sessionId = getQueryParam("session_id");
 const persona = getQueryParam("persona") || "tech_lead";
@@ -9,9 +14,17 @@ const sendBtn = document.getElementById("send-btn");
 const endBtn = document.getElementById("end-btn");
 const typingIndicator = document.getElementById("typing-indicator");
 const liveContent = document.getElementById("live-content");
+const textInputRow = document.getElementById("text-input-row");
+const voiceInputRow = document.getElementById("voice-input-row");
+const holdTalkBtn = document.getElementById("hold-talk-btn");
+const voiceStatus = document.getElementById("voice-status");
+const transportRadios = document.querySelectorAll('input[name="transport"]');
 
 let isStreaming = false;
 let roundCount = 0;
+let transportMode = "text";
+let isRecording = false;
+let currentAudio = null;
 
 const personaLabel = {
   tech_lead: "严厉的技术总监",
@@ -160,7 +173,7 @@ async function restoreMessages() {
 }
 
 async function consumeStream() {
-  if (!sessionId) return;
+  if (!sessionId || transportMode === "voice") return;
   isStreaming = true;
   sendBtn.disabled = true;
   setTyping(true);
@@ -216,6 +229,151 @@ async function consumeStream() {
     };
   });
 }
+
+function setTransportMode(mode) {
+  transportMode = mode;
+  const isVoice = mode === "voice";
+  textInputRow.classList.toggle("hidden", isVoice);
+  voiceInputRow.classList.toggle("hidden", !isVoice);
+  voiceStatus.classList.toggle("hidden", !isVoice);
+  if (isVoice && !isRecordingSupported()) {
+    voiceStatus.textContent = "当前浏览器不支持录音";
+  } else if (isVoice) {
+    voiceStatus.textContent = "按住按钮说话，松手发送";
+  }
+}
+
+function playAssistantAudio(base64, mime = "audio/mpeg") {
+  if (!base64) return;
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  currentAudio = new Audio(`data:${mime};base64,${base64}`);
+  currentAudio.play().catch(() => {
+    showToast("无法播放语音", true);
+  });
+}
+
+async function sendVoiceTurn(wavBlob) {
+  if (!sessionId || isStreaming) return;
+
+  isStreaming = true;
+  holdTalkBtn.disabled = true;
+  sendBtn.disabled = true;
+  setTyping(true);
+  voiceStatus.textContent = "识别与回复中…";
+
+  const form = new FormData();
+  form.append("file", wavBlob, "utterance.wav");
+
+  try {
+    const response = await fetch(`/api/interview/${sessionId}/voice/turn`, {
+      method: "POST",
+      body: form,
+    });
+    let data = null;
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+    if (!response.ok) {
+      const detail = data?.detail || (typeof data === "string" ? data : "Voice turn failed");
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+
+    appendMessage("user", data.transcript || "（语音）");
+    appendMessage("assistant", data.assistant_text || "");
+    playAssistantAudio(data.audio_base64, data.audio_mime || "audio/mpeg");
+
+    updateMeta(data);
+    if (data.live_assessment) {
+      renderLiveAssessment(data.live_assessment);
+    } else {
+      await refreshLive();
+    }
+    await refreshStatus();
+
+    const closing =
+      data.pending_action === "stream_closing" ||
+      data.pending_action === "generate_report";
+
+    if (closing) {
+      appendSystem("面试即将结束...");
+      appendSystem("正在生成评估报告...");
+      await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
+      window.location.href = `/report.html?session_id=${sessionId}`;
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    isStreaming = false;
+    holdTalkBtn.disabled = false;
+    sendBtn.disabled = false;
+    setTyping(false);
+    if (transportMode === "voice") {
+      voiceStatus.textContent = "按住按钮说话，松手发送";
+    }
+  }
+}
+
+async function onHoldTalkStart(event) {
+  event.preventDefault();
+  if (isStreaming || isRecording) return;
+  try {
+    await startRecording();
+    isRecording = true;
+    holdTalkBtn.classList.add("recording");
+    voiceStatus.textContent = "录音中…松手发送";
+  } catch (err) {
+    showToast("无法访问麦克风：" + err.message, true);
+  }
+}
+
+async function onHoldTalkEnd(event) {
+  event.preventDefault();
+  if (!isRecording) return;
+  isRecording = false;
+  holdTalkBtn.classList.remove("recording");
+  voiceStatus.textContent = "处理中…";
+  try {
+    const { blob: wavBlob, peak, durationSec } = await stopRecording();
+    if (!wavBlob || wavBlob.size < 1000) {
+      voiceStatus.textContent = "录音太短，请重试";
+      return;
+    }
+    if (durationSec < 0.4) {
+      voiceStatus.textContent = "请按住说话至少 0.5 秒";
+      return;
+    }
+    if (peak < 0.008) {
+      voiceStatus.textContent = "未检测到声音，请检查麦克风权限或提高音量";
+      showToast("未检测到有效音频，请靠近麦克风再试", true);
+      return;
+    }
+    await sendVoiceTurn(wavBlob);
+  } catch (err) {
+    showToast(err.message, true);
+    voiceStatus.textContent = "按住按钮说话，松手发送";
+  }
+}
+
+transportRadios.forEach((radio) => {
+  radio.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      setTransportMode(e.target.value);
+    }
+  });
+});
+
+holdTalkBtn.addEventListener("mousedown", onHoldTalkStart);
+holdTalkBtn.addEventListener("mouseup", onHoldTalkEnd);
+holdTalkBtn.addEventListener("mouseleave", onHoldTalkEnd);
+holdTalkBtn.addEventListener("touchstart", onHoldTalkStart, { passive: false });
+holdTalkBtn.addEventListener("touchend", onHoldTalkEnd);
+holdTalkBtn.addEventListener("touchcancel", onHoldTalkEnd);
 
 async function sendAnswer() {
   const text = userInput.value.trim();
@@ -293,6 +451,7 @@ async function init() {
     showToast("缺少 session_id", true);
     return;
   }
+  setTransportMode("text");
   await restoreMessages();
   await refreshStatus();
   const msgs = chatWindow.querySelectorAll(".message.user, .message.assistant");

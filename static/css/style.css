@@ -293,6 +293,38 @@ th {
   min-height: 56px;
 }
 
+.voice-transport-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.transport-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.voice-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.btn-voice {
+  flex: 1;
+  min-height: 56px;
+  user-select: none;
+  touch-action: none;
+}
+
+.btn-voice.recording {
+  background: #c0392b;
+  border-color: #c0392b;
+}
+
 /* Interview layout with live sidebar */
 .interview-page .container {
   max-width: 1200px;

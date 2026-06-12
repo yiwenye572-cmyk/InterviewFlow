@@ -88,6 +88,18 @@ class InterviewMessageResponse(BaseModel):
     live_assessment: dict | None = None
 
 
+class VoiceTurnResponse(BaseModel):
+    session_id: int
+    transcript: str
+    assistant_text: str
+    audio_base64: str
+    audio_mime: str = "audio/mpeg"
+    round_count: int
+    phase: str = "opening"
+    pending_action: str | None = None
+    live_assessment: dict | None = None
+
+
 class InterviewStatusResponse(BaseModel):
     session_id: int
     status: str

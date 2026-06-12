@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{BASE_DIR / 'data' / 'app.db'}"
     chroma_path: str = str(BASE_DIR / "data" / "chroma")
 
+    volc_speech_api_key: str = ""
+    volc_asr_resource_id: str = "volc.seedasr.sauc.duration"
+    volc_tts_resource_id: str = "seed-tts-2.0"
+    volc_tts_speaker_tech: str = "zh_male_jingqiangkanye_moon_bigtts"
+    volc_tts_speaker_hr: str = "zh_female_vv_uranus_bigtts"
+
 
 @lru_cache
 def get_settings() -> Settings:
