@@ -1,13 +1,13 @@
 const STEP_DEFS = [
-  { num: 1, label: "1. 上传", href: () => "/" },
+  { num: 1, label: "上传", href: () => "/" },
   {
     num: 2,
-    label: "2. 筛选",
+    label: "筛选",
     href: (ctx) => (ctx.jobId ? `/screening.html?job_id=${ctx.jobId}` : null),
   },
   {
     num: 3,
-    label: "3. 面试",
+    label: "面试",
     href: (ctx) =>
       ctx.sessionId
         ? `/interview.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`
@@ -15,13 +15,59 @@ const STEP_DEFS = [
   },
   {
     num: 4,
-    label: "4. 报告",
+    label: "报告",
     href: (ctx) =>
       ctx.sessionId
         ? `/report.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`
         : null,
   },
 ];
+
+const STEP_CHECK_SVG = `<svg class="flow-step__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+
+function stepStatus(stepNum, currentStep) {
+  if (stepNum < currentStep) return "done";
+  if (stepNum === currentStep) return "current";
+  return "pending";
+}
+
+function renderFlowStepper(currentStep, ctx) {
+  const items = STEP_DEFS.map((step, idx) => {
+    const status = stepStatus(step.num, currentStep);
+    const href = step.href(ctx);
+    const dot =
+      status === "done"
+        ? STEP_CHECK_SVG
+        : `<span class="flow-step__num">${step.num}</span>`;
+    const label = `<span class="flow-step__label">${step.label}</span>`;
+    const body = `<span class="flow-step__dot">${dot}</span>${label}`;
+
+    let stepHtml;
+    if (status === "done" && href) {
+      stepHtml = `<a href="${href}" class="flow-step__link" data-nav-link="step" aria-label="${step.label}（已完成，点击返回）">${body}</a>`;
+    } else if (status === "current") {
+      stepHtml = `<span class="flow-step__link" aria-label="${step.label}，当前步骤">${body}</span>`;
+    } else {
+      stepHtml = `<span class="flow-step__link" aria-label="${step.label}（未完成）">${body}</span>`;
+    }
+
+    const currentAttr = status === "current" ? ' aria-current="step"' : "";
+    let html = `<li class="flow-step flow-step--${status}"${currentAttr}>${stepHtml}</li>`;
+
+    if (idx < STEP_DEFS.length - 1) {
+      const nextNum = STEP_DEFS[idx + 1].num;
+      const joinDone = nextNum <= currentStep;
+      html += `<li class="flow-step-join${joinDone ? " flow-step-join--done" : ""}" aria-hidden="true"></li>`;
+    }
+    return html;
+  }).join("");
+
+  return `<div class="flow-stepper-card">
+    <nav class="flow-stepper" aria-label="招聘流程进度">
+      <ol class="flow-stepper__track">${items}</ol>
+    </nav>
+  </div>`;
+}
 
 let navState = {
   confirmLeave: false,
@@ -77,22 +123,8 @@ export function initAppNav(options = {}) {
       </div>
     </div>`;
 
-  let stepsHtml = "";
-  if (currentStep != null) {
-    stepsHtml = `<nav class="steps app-steps">${STEP_DEFS.map((step) => {
-      const href = step.href(ctx);
-      if (step.num === currentStep) {
-        return `<span class="step active">${step.label}</span>`;
-      }
-      if (step.num < currentStep) {
-        if (href) {
-          return `<a class="step clickable" href="${href}" data-nav-link="step">${step.label}</a>`;
-        }
-        return `<span class="step disabled">${step.label}</span>`;
-      }
-      return `<span class="step disabled">${step.label}</span>`;
-    }).join("")}</nav>`;
-  }
+  const stepsHtml =
+    currentStep != null ? renderFlowStepper(currentStep, ctx) : "";
 
   let actionsHtml = "";
   const extras = options.extraActions || [];

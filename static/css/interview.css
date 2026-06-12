@@ -19,8 +19,9 @@ body.interview-page .app-nav-global {
   margin-bottom: 0.75rem;
 }
 
-body.interview-page .steps {
+body.interview-page .flow-stepper-card {
   margin-bottom: 0.75rem;
+  padding: 0.875rem 1.25rem;
 }
 
 body.interview-page .page-nav-actions {

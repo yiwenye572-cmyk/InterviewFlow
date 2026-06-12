@@ -79,31 +79,141 @@ body.app-page .container {
   border-radius: 4px;
 }
 
-.steps {
-  gap: 0.375rem;
-  margin-bottom: var(--space-md);
-}
-
-.step {
-  background: var(--bg);
+/* ── 流程步骤条（圆圈 + 连接线）── */
+.flow-stepper-card {
+  background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.125rem 1.5rem;
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow);
+}
+
+.flow-stepper__track {
+  display: flex;
+  align-items: flex-start;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.flow-step {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+.flow-step-join {
+  flex: 1 1 auto;
+  min-width: 1.5rem;
+  height: 2px;
+  background: var(--border);
+  margin-top: 1.125rem;
+  border-radius: 1px;
+  transition: background 0.25s ease;
+}
+
+.flow-step-join--done {
+  background: var(--primary);
+}
+
+.flow-step__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.flow-step__link {
+  cursor: pointer;
+}
+
+a.flow-step__link:hover .flow-step__dot {
+  box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+a.flow-step__link:focus-visible {
+  outline: none;
+}
+
+a.flow-step__link:focus-visible .flow-step__dot {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.flow-step__dot {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  background: var(--surface);
   color: var(--muted);
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.step.active {
+.flow-step__num {
+  line-height: 1;
+}
+
+.flow-step__icon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+}
+
+.flow-step__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+/* 已完成 */
+.flow-step--done .flow-step__dot {
+  background: var(--primary);
   border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary-ring);
+  color: #fff;
 }
 
-.step.clickable:hover {
-  background: var(--primary-light);
-  border-color: rgb(64 128 255 / 0.35);
+.flow-step--done .flow-step__label {
+  color: var(--text-body);
+}
+
+/* 当前步骤 */
+.flow-step--current .flow-step__dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+.flow-step--current .flow-step__label {
   color: var(--primary);
+  font-weight: 600;
+}
+
+/* 未完成 */
+.flow-step--pending .flow-step__dot {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.flow-step--pending .flow-step__label {
+  color: var(--muted);
 }
 
 .page-nav-actions {
   margin-bottom: var(--space-md);
+  padding-top: 0.125rem;
 }
 
 .page-nav-actions .btn {
@@ -455,6 +565,29 @@ body.home-page .home-layout {
     grid-template-columns: 1fr;
   }
 
+  .flow-stepper-card {
+    padding: 0.875rem 0.75rem;
+  }
+
+  .flow-step {
+    min-width: 3.25rem;
+  }
+
+  .flow-step__dot {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8125rem;
+  }
+
+  .flow-step-join {
+    margin-top: 1rem;
+    min-width: 0.75rem;
+  }
+
+  .flow-step__label {
+    font-size: 0.75rem;
+  }
+
   .page-header h1 {
     font-size: 1.25rem;
   }
@@ -474,7 +607,8 @@ body.home-page .home-layout {
 
 @media (prefers-reduced-motion: reduce) {
   .btn,
-  .step,
+  .flow-step__dot,
+  .flow-step-join,
   .job-list-item,
   .resume-select-item,
   tbody tr,
