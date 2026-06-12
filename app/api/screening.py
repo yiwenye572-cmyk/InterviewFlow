@@ -62,6 +62,7 @@ def _screening_to_item(screening: ScreeningResult | None, resume: Resume) -> Scr
         except Exception:
             pass
         dimension_scores = json.loads(screening.dimension_scores_json or "{}")
+        score_flags = json.loads(screening.score_flags_json or "[]")
         return ScreeningResultItem(
             resume_id=resume.id,
             filename=resume.filename,
@@ -81,6 +82,7 @@ def _screening_to_item(screening: ScreeningResult | None, resume: Resume) -> Scr
             has_question_pack=bool(screening.questions_json),
             summary=summary or None,
             skills=skills,
+            score_flags=score_flags,
         )
     return ScreeningResultItem(
         resume_id=resume.id,

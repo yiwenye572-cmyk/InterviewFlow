@@ -35,6 +35,7 @@ class ScreeningResultItem(BaseModel):
     has_question_pack: bool = False
     summary: str | None = None
     skills: list[str] = Field(default_factory=list)
+    score_flags: list[str] = Field(default_factory=list)
 
 
 class ScreeningResultsResponse(BaseModel):

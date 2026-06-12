@@ -38,6 +38,8 @@
 
 ```bash
 python scripts/test_layer_a.py
+python scripts/test_jl_jd_templates.py
+python scripts/diagnose_resume.py --file JL.txt
 python scripts/test_layer_b.py
 python scripts/test_p0.py
 python scripts/test_candidate_feedback.py

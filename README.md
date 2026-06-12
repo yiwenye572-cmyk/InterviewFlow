@@ -5,6 +5,8 @@
 ## 功能概览
 
 1. **上传**：JD + 多份简历（PDF / DOCX / TXT）
+
+> **TXT 说明**：`.txt` 与 PDF/DOCX 同等支持。若筛选页显示 `failed` / `Unknown`，通常是 **LLM 结构化抽取**失败（非格式拒绝），可在 Network 或 `decision_summary` 查看原因；运行 `python scripts/diagnose_resume.py --file JL.txt` 本地复现。项目内 [`samples/yeyiwen_resume.txt`](samples/yeyiwen_resume.txt) + [`samples/shopee_jd.txt`](samples/shopee_jd.txt) 为 Markdown 模板回归用例。
 2. **筛选（A 薄层）**：JD/简历结构化抽取 → 混合打分 → 追问包（3–5）→ 按需试题包（≥10）→ 决策建议
 3. **面试（B 深主线）**：消费 A 层追问/试题种子，多轮 Agent 动态面试
 4. **报告**：岗位匹配度、沟通能力、风险点、下轮建议；含 Self-reflection 修正

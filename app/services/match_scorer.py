@@ -7,6 +7,10 @@ from app.models.entities import Job, Resume, ScreeningResult
 from app.schemas.resume_structured import JDStructured, ResumeStructured
 from app.services.embedding import semantic_similarity, upsert_job_embedding, upsert_resume_embedding
 from app.services.followup_generator import generate_followup_pack
+from app.services.resume_heuristics import (
+    build_partial_structured,
+    parse_failure_summary,
+)
 from app.services.resume_extractor import (
     extract_jd_structured,
     extract_resume_structured,
@@ -68,25 +72,38 @@ def _screen_single_resume(
 ) -> ScreeningResult:
     score_flags = list(global_flags)
     structured = None
+    parse_exc: Exception | None = None
+    text_len = len(resume.raw_text or "")
 
-    if resume.parse_quality == "low" and len(resume.raw_text) < 100:
+    if resume.parse_quality == "low" and text_len < 100:
         resume.parse_status = "failed"
         resume.structured_json = None
         resume.summary_text = resume.raw_text[:2000]
+        score_flags.append("parse_too_short")
     elif resume.parse_quality == "scanned":
         resume.parse_status = "failed"
         resume.structured_json = None
         resume.summary_text = resume.raw_text[:2000]
+        score_flags.append("parse_scanned")
     else:
         try:
             structured = extract_resume_structured(resume.raw_text)
             resume.structured_json = structured.model_dump_json(ensure_ascii=False)
             resume.summary_text = structured.summary or _build_summary(structured)
             resume.parse_status = "success" if resume.parse_quality == "good" else "partial"
-        except Exception:
-            resume.parse_status = "failed"
-            resume.structured_json = None
-            resume.summary_text = resume.raw_text[:2000]
+        except Exception as exc:
+            parse_exc = exc
+            score_flags.append(f"llm_extract_failed:{str(exc)[:120]}")
+            if text_len >= 100 and resume.parse_quality == "good":
+                structured = build_partial_structured(resume.raw_text)
+                resume.structured_json = structured.model_dump_json(ensure_ascii=False)
+                resume.summary_text = structured.summary or resume.raw_text[:2000]
+                resume.parse_status = "partial"
+                score_flags.append("parse_partial_fallback")
+            else:
+                resume.parse_status = "failed"
+                resume.structured_json = None
+                resume.summary_text = resume.raw_text[:2000]
 
     db.flush()
 
@@ -131,12 +148,18 @@ def _screen_single_resume(
         reasons = ["Resume parsing failed; score based mainly on text similarity."]
         gaps = ["Structured resume data unavailable."]
         recommend = False
-        decision_summary = "简历解析失败，建议人工复核或重新上传可搜索 PDF/DOCX。"
+        decision_summary = parse_failure_summary(
+            parse_quality=resume.parse_quality or "good",
+            text_len=text_len,
+            exc=parse_exc,
+        )
         score_flags.append("parse_failed")
 
     final_score = round(semantic_score * 0.4 + llm_score * 0.6, 1)
     recommend_interview = (
-        recommend and final_score >= threshold and resume.parse_status == "success"
+        recommend
+        and final_score >= threshold
+        and resume.parse_status in ("success", "partial")
     )
 
     if structured:

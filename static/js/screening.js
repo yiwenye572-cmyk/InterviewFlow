@@ -80,6 +80,14 @@ async function loadResults() {
         const decision = r.decision_summary
           ? `<p class="decision-summary">${escapeHtml(r.decision_summary)}</p>`
           : "";
+        const parseHint =
+          r.parse_status !== "success"
+            ? `<p class="parse-hint muted small">${escapeHtml(
+                (r.score_flags || []).find((f) => f.startsWith("llm_extract_failed")) ||
+                  r.decision_summary ||
+                  `解析状态：${r.parse_status}`
+              )}</p>`
+            : "";
 
         return `
         <tr class="result-row" data-idx="${idx}">
@@ -87,6 +95,7 @@ async function loadResults() {
             <strong>${escapeHtml(r.candidate_name)}</strong><br/>
             <small class="muted">${escapeHtml(r.filename)}</small>
             ${r.parse_status !== "success" ? `<br/><span class="badge badge-warning">${escapeHtml(r.parse_status)}</span>` : ""}
+            ${parseHint}
           </td>
           <td><span class="score ${scoreClass(r.final_score)}">${r.final_score}</span></td>
           <td>${r.semantic_score.toFixed(1)} / ${r.llm_score.toFixed(1)}</td>

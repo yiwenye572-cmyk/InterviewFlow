@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WorkItem(BaseModel):
@@ -25,6 +27,42 @@ class ResumeStructured(BaseModel):
     contact: ContactInfo | None = None
     expected_salary: str | None = None
     interview_feedback: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_llm_shapes(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for key in ("education", "skills", "highlights", "ambiguities", "interview_feedback"):
+            val = data.get(key)
+            if isinstance(val, str) and val.strip():
+                data[key] = [val.strip()]
+            elif val is None:
+                data[key] = []
+        years = data.get("years_experience")
+        if isinstance(years, str):
+            try:
+                data["years_experience"] = float(years.strip())
+            except ValueError:
+                data["years_experience"] = 0.0
+        wh = data.get("work_history")
+        if isinstance(wh, dict):
+            data["work_history"] = [wh]
+        return data
+
+    @field_validator("years_experience", mode="before")
+    @classmethod
+    def _years_as_float(cls, v: Any) -> float:
+        if v is None or v == "":
+            return 0.0
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            try:
+                return float(v.strip())
+            except ValueError:
+                return 0.0
+        return 0.0
 
 
 class JDStructured(BaseModel):
