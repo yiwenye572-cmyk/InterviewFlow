@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     llm_structured_max_retries: int = 2
     llm_trace_backend: str = "none"
 
+    resume_validation_enabled: bool = True
+    resume_validation_skill_min_ratio: float = 0.6
+    resume_validation_name_required: bool = True
+    resume_validation_score_penalty: float = 5.0
+    resume_validation_force_partial_severe: int = 2
+
 
 @lru_cache
 def get_settings() -> Settings:

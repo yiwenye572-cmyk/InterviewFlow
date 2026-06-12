@@ -322,6 +322,21 @@ python scripts/test_llm_harness.py   # mock 单测，不耗 API Key
 
 ---
 
+## 简历 Grounding 回验
+
+LLM 结构化抽取**成功后**（非 `parse_partial_fallback` 降级路径），[`app/services/resume_validator.py`](app/services/resume_validator.py) 对原文做事实回验：
+
+- **字段 grounding**：姓名、公司、学校、联系方式须在原文 fuzzy 命中
+- **Skills**：未命中 skill 写入 `ambiguities` 并标记 `validation_skill_ungrounded:*`
+- **年限 sanity**：`years_experience` 与经历时间段矛盾时标记 `validation_years_inflated`
+- **输出**：`validation_*` flags 并入筛选结果 `score_flags`；严重幻觉可将 `success → partial` 并扣 `RESUME_VALIDATION_SCORE_PENALTY` 分
+
+```bash
+python scripts/test_resume_validator.py   # 纯规则单测，不耗 API
+```
+
+---
+
 ## Docker 部署
 
 本地验证与服务器部署均使用项目根目录的 `docker-compose.yml`。容器内 uvicorn 监听 `8000`，宿主机映射为 **`127.0.0.1:8001`**（避开 MAEC-SYS 占用的 8000）。详见 [`服务器环境.md`](服务器环境.md) 端口说明。

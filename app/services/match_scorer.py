@@ -16,6 +16,7 @@ from app.services.resume_extractor import (
     extract_resume_structured,
     score_resume_match,
 )
+from app.services.resume_validator import validate_resume_grounding
 
 
 def screen_job(
@@ -95,7 +96,9 @@ def screen_single_resume(
     score_flags = list(global_flags)
     structured = None
     parse_exc: Exception | None = None
+    grounding_severity: str | None = None
     text_len = len(resume.raw_text or "")
+    settings = get_settings()
 
     if resume.parse_quality == "low" and text_len < 100:
         resume.parse_status = "failed"
@@ -110,9 +113,19 @@ def screen_single_resume(
     else:
         try:
             structured = extract_resume_structured(resume.raw_text)
+            resume.parse_status = "success" if resume.parse_quality == "good" else "partial"
+            if settings.resume_validation_enabled:
+                grounding = validate_resume_grounding(resume.raw_text, structured)
+                structured = grounding.structured or structured
+                score_flags.extend(grounding.validation_flags)
+                grounding_severity = grounding.severity
+                if grounding.severity == "fail" and resume.parse_status == "success":
+                    resume.parse_status = "partial"
+                    score_flags.append("validation_force_partial")
+                elif grounding.severity == "warn":
+                    score_flags.append("validation_warn")
             resume.structured_json = structured.model_dump_json(ensure_ascii=False)
             resume.summary_text = structured.summary or _build_summary(structured)
-            resume.parse_status = "success" if resume.parse_quality == "good" else "partial"
         except Exception as exc:
             parse_exc = exc
             score_flags.append(f"llm_extract_failed:{str(exc)[:120]}")
@@ -178,6 +191,8 @@ def screen_single_resume(
         score_flags.append("parse_failed")
 
     final_score = round(semantic_score * 0.4 + llm_score * 0.6, 1)
+    if grounding_severity in ("warn", "fail"):
+        final_score = max(0.0, round(final_score - settings.resume_validation_score_penalty, 1))
     recommend_interview = (
         recommend
         and final_score >= threshold
