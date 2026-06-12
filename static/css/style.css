@@ -363,6 +363,41 @@ th {
   gap: 0.5rem;
 }
 
+.job-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.job-list-row .job-list-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.job-list-row.active .job-list-item {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+
+.job-delete-btn {
+  flex-shrink: 0;
+  width: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.job-delete-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: #fef2f2;
+}
+
 .job-list-item {
   display: flex;
   flex-direction: column;
@@ -381,11 +416,6 @@ th {
 
 .job-list-item:hover {
   border-color: var(--primary);
-}
-
-.job-list-item.active {
-  border-color: var(--primary);
-  background: #eff6ff;
 }
 
 .job-list-title {

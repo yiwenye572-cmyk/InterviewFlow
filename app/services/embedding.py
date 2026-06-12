@@ -95,3 +95,14 @@ def semantic_similarity(job_id: int, resume_id: int, resume_text: str) -> float:
 
 def build_summary_text(structured_json: str, summary: str) -> str:
     return summary or structured_json
+
+
+def delete_document_embeddings(prefix: str, entity_ids: list[int]) -> None:
+    if not entity_ids:
+        return
+    collection = _get_collection()
+    doc_ids = [_doc_id(prefix, eid) for eid in entity_ids]
+    try:
+        collection.delete(ids=doc_ids)
+    except Exception:
+        pass

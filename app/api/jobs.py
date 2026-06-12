@@ -50,6 +50,14 @@ def get_job_overview(job_id: int, db: Session = Depends(get_db)):
     return overview
 
 
+@router.delete("/{job_id}")
+def delete_job(job_id: int, db: Session = Depends(get_db)):
+    service = HistoryService(db)
+    if not service.delete_job(job_id):
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"ok": True, "job_id": job_id}
+
+
 def _resume_display_name(resume: Resume) -> str:
     if resume.structured_json:
         try:

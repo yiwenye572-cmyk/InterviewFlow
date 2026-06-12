@@ -7,7 +7,7 @@ import json
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.entities import InterviewSession, Job, Resume, ScreeningResult
+from app.models.entities import InterviewMessage, InterviewSession, Job, Resume, ScreeningResult
 from app.schemas.api import InterviewSummaryItem, JobListItem, JobOverviewResponse
 from app.schemas.resume_structured import JDStructured, ResumeStructured
 
@@ -182,3 +182,40 @@ class HistoryService:
             jd_structured=jd_structured,
             interviews=interviews,
         )
+
+    def delete_job(self, job_id: int) -> bool:
+        job = self.db.get(Job, job_id)
+        if not job:
+            return False
+
+        resume_ids = [
+            row[0]
+            for row in self.db.query(Resume.id).filter(Resume.job_id == job_id).all()
+        ]
+        session_ids = [
+            row[0]
+            for row in self.db.query(InterviewSession.id)
+            .filter(InterviewSession.job_id == job_id)
+            .all()
+        ]
+
+        if session_ids:
+            self.db.query(InterviewMessage).filter(
+                InterviewMessage.session_id.in_(session_ids)
+            ).delete(synchronize_session=False)
+
+        self.db.query(InterviewSession).filter(InterviewSession.job_id == job_id).delete(
+            synchronize_session=False
+        )
+        self.db.query(ScreeningResult).filter(ScreeningResult.job_id == job_id).delete(
+            synchronize_session=False
+        )
+        self.db.query(Resume).filter(Resume.job_id == job_id).delete(synchronize_session=False)
+        self.db.delete(job)
+        self.db.commit()
+
+        from app.services.embedding import delete_document_embeddings
+
+        delete_document_embeddings("resume", resume_ids)
+        delete_document_embeddings("job", [job_id])
+        return True

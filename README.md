@@ -211,6 +211,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 |------|------|------|
 | POST | `/api/jobs` | 上传 JD |
 | GET | `/api/jobs` | 历史岗位列表（含 `jd_summary`、`has_structured`；首页左侧侧栏数据源） |
+| DELETE | `/api/jobs/{id}` | 删除岗位及关联简历、筛选、面试记录 |
 | GET | `/api/jobs/{id}/overview` | 岗位 JD 摘要 + 面试记录 |
 | POST | `/api/resumes?job_id=` | 批量上传简历 |
 | GET | `/api/jobs/{id}/resumes` | 岗位下简历列表（供首页勾选后筛选） |

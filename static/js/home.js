@@ -39,7 +39,7 @@ function setMode(next) {
   mode = next;
   panelNew.classList.toggle("hidden", mode !== "new");
   panelExisting.classList.toggle("hidden", mode !== "existing");
-  document.querySelectorAll(".job-list-item").forEach((el) => {
+  document.querySelectorAll(".job-list-row").forEach((el) => {
     el.classList.toggle("active", mode === "existing" && Number(el.dataset.jobId) === selectedJobId);
   });
 }
@@ -159,18 +159,55 @@ function renderJobList() {
   jobListEl.innerHTML = jobs
     .map(
       (j) => `
-    <button type="button" class="job-list-item${selectedJobId === j.id && mode === "existing" ? " active" : ""}"
-      data-job-id="${j.id}">
-      <span class="job-list-title">${escapeHtml(j.title || j.filename)}</span>
-      <span class="job-list-meta muted">${j.resume_count} 份简历 · ${formatDate(j.created_at)}</span>
-      ${j.jd_summary ? `<span class="job-list-summary">${escapeHtml(j.jd_summary.slice(0, 60))}${j.jd_summary.length > 60 ? "…" : ""}</span>` : ""}
-    </button>`
+    <div class="job-list-row${selectedJobId === j.id && mode === "existing" ? " active" : ""}" data-job-id="${j.id}">
+      <button type="button" class="job-list-item" data-job-id="${j.id}">
+        <span class="job-list-title">${escapeHtml(j.title || j.filename)}</span>
+        <span class="job-list-meta muted">${j.resume_count} 份简历 · ${formatDate(j.created_at)}</span>
+        ${j.jd_summary ? `<span class="job-list-summary">${escapeHtml(j.jd_summary.slice(0, 60))}${j.jd_summary.length > 60 ? "…" : ""}</span>` : ""}
+      </button>
+      <button type="button" class="job-delete-btn" data-job-id="${j.id}" title="删除岗位" aria-label="删除岗位">×</button>
+    </div>`
     )
     .join("");
 
   jobListEl.querySelectorAll(".job-list-item").forEach((btn) => {
     btn.addEventListener("click", () => selectJob(Number(btn.dataset.jobId)));
   });
+
+  jobListEl.querySelectorAll(".job-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = Number(btn.dataset.jobId);
+      const job = jobs.find((j) => j.id === id);
+      deleteJob(id, job?.title || job?.filename);
+    });
+  });
+}
+
+async function deleteJob(id, title) {
+  const name = title || `岗位 #${id}`;
+  if (
+    !confirm(
+      `确定删除「${name}」？\n将同时删除该岗位下的简历、筛选与面试记录，且不可恢复。`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await apiRequest(`/api/jobs/${id}`, { method: "DELETE" });
+    showToast("岗位已删除");
+    if (selectedJobId === id) {
+      selectedJobId = null;
+      resumes = [];
+      localStorage.removeItem(STORAGE_KEY);
+      renderResumeList();
+      setMode("new");
+    }
+    await loadJobSidebar();
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }
 
 async function loadJobSidebar() {
