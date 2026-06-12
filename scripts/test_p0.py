@@ -78,7 +78,11 @@ def main() -> None:
     ok(f"list resumes count={len(resume_list)}")
 
     print("[....] screening...")
-    requests.post(f"{BASE}/api/screen/{job_id}", json={"resume_ids": [resume_id]}, timeout=300).raise_for_status()
+    requests.post(
+        f"{BASE}/api/screen/{job_id}",
+        json={"resume_ids": [resume_id], "async": False},
+        timeout=300,
+    ).raise_for_status()
     results = requests.get(f"{BASE}/api/screen/{job_id}/results", timeout=30).json()["results"]
 
     r = requests.get(f"{BASE}/api/jobs", timeout=10)

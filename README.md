@@ -209,6 +209,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 面试进行中离开会确认提示；`job_id` 随 URL 传递，报告 API 亦返回 `job_id` 作为兜底。
 
+**面试议程侧栏**：面试页右侧可切换「实时评估 / 面试议程」，展示当前议题、待追问队列、主题目预告与考察点覆盖。
+
+**批次筛选进度**：首页「上传并筛选」默认异步并发（最多 3 路），弹窗显示 `已完成/总数` 进度；脚本测试请传 `"async": false` 同步筛选。
+
 ### 4. Demo 样本
 
 `samples/` 目录提供了 JD 与两份对比简历（高匹配 / 低匹配）：
@@ -227,7 +231,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | GET | `/api/jobs/{id}/overview` | 岗位 JD 摘要 + 面试记录 |
 | POST | `/api/resumes?job_id=` | 批量上传简历 |
 | GET | `/api/jobs/{id}/resumes` | 岗位下简历列表（供首页勾选后筛选） |
-| POST | `/api/screen/{job_id}` | 筛选；body `{ "resume_ids": [1,2] }` 仅筛选中简历；无 body 则筛全部 |
+| POST | `/api/screen/{job_id}` | 筛选；body `{ "resume_ids": [1,2], "async": true }` 异步批次；`async: false` 同步 |
+| GET | `/api/screen/batch/{batch_id}` | 异步筛选批次进度 |
 | GET | `/api/screen/{job_id}/results` | 筛选结果 |
 | GET | `/api/screen/{job_id}/detail/{resume_id}` | 单候选人 A 层详情 |
 | GET | `/api/screen/{job_id}/questions/{resume_id}` | 懒加载试题包（≥10） |

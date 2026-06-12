@@ -51,11 +51,17 @@
 
       <aside class="card live-sidebar" id="live-sidebar">
         <div class="live-header">
-          <h3>实时评估</h3>
+          <div class="sidebar-tabs">
+            <button type="button" class="sidebar-tab active" data-tab="live">实时评估</button>
+            <button type="button" class="sidebar-tab" data-tab="agenda">面试议程</button>
+          </div>
           <button id="toggle-live" class="btn btn-secondary btn-sm" type="button">收起</button>
         </div>
-        <div id="live-content" class="live-content">
+        <div id="live-content" class="live-content sidebar-panel">
           <p class="live-placeholder">完成首轮回答后将显示实时评估快照</p>
+        </div>
+        <div id="agenda-content" class="live-content sidebar-panel hidden">
+          <p class="live-placeholder">加载议程中…</p>
         </div>
       </aside>
     </div>

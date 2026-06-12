@@ -44,7 +44,7 @@ def screen_job(
         raise ValueError("One or more resume_ids not found for this job")
 
     for resume in resumes:
-        result = _screen_single_resume(
+        result = screen_single_resume(
             db, job, job_structured, resume, settings.match_threshold, score_flags
         )
         results.append(result)
@@ -70,7 +70,21 @@ def _ensure_jd_structured(db: Session, job: Job) -> JDStructured | None:
         return None
 
 
-def _screen_single_resume(
+def prepare_job_screening(db: Session, job_id: int) -> tuple[Job, JDStructured | None, list[str]]:
+    job = db.get(Job, job_id)
+    if not job:
+        raise ValueError(f"Job {job_id} not found")
+    job_structured = _ensure_jd_structured(db, job)
+    score_flags: list[str] = []
+    try:
+        upsert_job_embedding(job.id, job.raw_text)
+    except Exception:
+        score_flags.append("embedding_job_fallback")
+    db.commit()
+    return job, job_structured, score_flags
+
+
+def screen_single_resume(
     db: Session,
     job: Job,
     job_structured: JDStructured | None,

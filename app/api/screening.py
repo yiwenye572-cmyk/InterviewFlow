@@ -7,6 +7,8 @@ from app.database import get_db
 from app.models.entities import Job, Resume, ScreeningResult
 from app.schemas.api import (
     QuestionPackResponse,
+    ScreenBatchStartResponse,
+    ScreenBatchStatusResponse,
     ScreenRequest,
     ScreeningDetailResponse,
     ScreeningResultItem,
@@ -20,8 +22,33 @@ from app.schemas.resume_structured import (
 )
 from app.services.match_scorer import screen_job
 from app.services.question_generator import generate_question_pack
+from app.services.screen_batch import get_batch, start_batch
 
 router = APIRouter(prefix="/api/screen", tags=["screening"])
+
+
+@router.get("/batch/{batch_id}", response_model=ScreenBatchStatusResponse)
+def get_screen_batch_status(batch_id: str):
+    batch = get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return ScreenBatchStatusResponse(
+        batch_id=batch.batch_id,
+        job_id=batch.job_id,
+        total=batch.total,
+        completed=batch.completed,
+        failed=batch.failed,
+        status=batch.status,
+        items=[
+            {
+                "resume_id": i.resume_id,
+                "filename": i.filename,
+                "status": i.status,
+                "error": i.error,
+            }
+            for i in batch.items
+        ],
+    )
 
 
 @router.post("/{job_id}")
@@ -34,6 +61,15 @@ def run_screening(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     resume_ids = payload.resume_ids if payload else None
+    async_mode = payload.async_mode if payload else False
+    if async_mode:
+        if not resume_ids:
+            raise HTTPException(status_code=400, detail="resume_ids required for async screening")
+        try:
+            batch_id = start_batch(job_id, resume_ids)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return ScreenBatchStartResponse(batch_id=batch_id, job_id=job_id, total=len(resume_ids))
     try:
         results = screen_job(db, job_id, resume_ids=resume_ids)
     except ValueError as exc:

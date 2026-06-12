@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from app.schemas.resume_structured import FollowupQuestion, InterviewConfig, InterviewQuestion
 
@@ -31,7 +31,39 @@ class JobResumeListResponse(BaseModel):
 
 
 class ScreenRequest(BaseModel):
-    resume_ids: list[int] = Field(min_length=1)
+    resume_ids: list[int] | None = None
+    async_mode: bool = Field(default=True, validation_alias=AliasChoices("async", "async_mode"))
+
+
+class ScreenBatchItem(BaseModel):
+    resume_id: int
+    filename: str
+    status: str
+    error: str | None = None
+
+
+class ScreenBatchStatusResponse(BaseModel):
+    batch_id: str
+    job_id: int
+    total: int
+    completed: int
+    failed: int
+    status: str
+    items: list[ScreenBatchItem] = Field(default_factory=list)
+
+
+class ScreenBatchStartResponse(BaseModel):
+    batch_id: str
+    job_id: int
+    total: int
+    message: str = "Screening batch started"
+
+
+class UpcomingQuestionPreview(BaseModel):
+    question: str
+    competency: str = ""
+    difficulty: str = ""
+    category: str = ""
 
 
 class ScreeningResultItem(BaseModel):
@@ -133,6 +165,9 @@ class InterviewStatusResponse(BaseModel):
     interview_mode: str = "adaptive"
     interview_config: dict = Field(default_factory=dict)
     question_index: int = 0
+    current_topic: str = ""
+    followup_queue: list[str] = Field(default_factory=list)
+    upcoming_questions: list[UpcomingQuestionPreview] = Field(default_factory=list)
 
 
 class InterviewMessagesResponse(BaseModel):

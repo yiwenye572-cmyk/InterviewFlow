@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     qwen_model_fast: str = "qwen-turbo"
     qwen_embedding_model: str = "text-embedding-v3"
     match_threshold: int = 60
+    screen_concurrency: int = 3
     max_interview_rounds: int = 10
     database_url: str = f"sqlite:///{BASE_DIR / 'data' / 'app.db'}"
     chroma_path: str = str(BASE_DIR / "data" / "chroma")

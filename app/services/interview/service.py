@@ -317,6 +317,21 @@ class InterviewService:
                 config = json.loads(session.interview_config_json)
             except Exception:
                 pass
+        question_queue = json.loads(session.question_queue_json or "[]")
+        q_index = session.question_index or 0
+        upcoming: list[dict] = []
+        for raw in question_queue[q_index : q_index + 3]:
+            if isinstance(raw, dict):
+                upcoming.append(
+                    {
+                        "question": raw.get("question", ""),
+                        "competency": raw.get("competency", ""),
+                        "difficulty": raw.get("difficulty", ""),
+                        "category": raw.get("category", ""),
+                    }
+                )
+            elif isinstance(raw, str):
+                upcoming.append({"question": raw, "competency": "", "difficulty": "", "category": ""})
         return {
             "session_id": session.id,
             "job_id": session.job_id,
@@ -331,6 +346,9 @@ class InterviewService:
             "interview_mode": config.get("interview_mode", "adaptive"),
             "interview_config": config,
             "question_index": session.question_index,
+            "current_topic": session.current_topic or "",
+            "followup_queue": json.loads(session.followup_queue_json or "[]"),
+            "upcoming_questions": upcoming,
         }
 
     def get_messages(self, session_id: int) -> list[dict[str, str]]:

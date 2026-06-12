@@ -16,6 +16,7 @@ const sendBtn = document.getElementById("send-btn");
 const endBtn = document.getElementById("end-btn");
 const typingIndicator = document.getElementById("typing-indicator");
 const liveContent = document.getElementById("live-content");
+const agendaContent = document.getElementById("agenda-content");
 const textInputRow = document.getElementById("text-input-row");
 const voiceInputRow = document.getElementById("voice-input-row");
 const holdTalkBtn = document.getElementById("hold-talk-btn");
@@ -52,6 +53,23 @@ const difficultyLabel = {
   hard: "困难",
 };
 
+const pendingActionLabel = {
+  stream_opening: "生成开场",
+  stream_question: "下一题",
+  stream_followup: "追问",
+  stream_closing: "收尾",
+  stream_encouragement: "鼓励话术",
+  wait_answer: "等待回答",
+  generate_report: "生成报告",
+  plan_topic: "规划议题",
+};
+
+const competencyStatusLabel = {
+  covered: "已验证",
+  at_risk: "存疑",
+  uncovered: "未覆盖",
+};
+
 const urlMode = getQueryParam("mode");
 document.getElementById("meta-persona").textContent =
   `面试官：${personaLabel[persona] || persona}`;
@@ -78,6 +96,12 @@ function setTyping(active) {
   typingIndicator.classList.toggle("hidden", !active);
 }
 
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text ?? "";
+  return div.innerHTML;
+}
+
 function renderLiveAssessment(live) {
   if (!live) return;
   liveContent.innerHTML = `
@@ -100,6 +124,65 @@ function renderLiveAssessment(live) {
       <ul>${(live.observed_risks || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
     </div>
     <p class="live-updated">置信度：${live.score_confidence != null ? (live.score_confidence * 100).toFixed(0) + "%" : "—"} · 更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
+}
+
+function renderAgendaPanel(status) {
+  if (!status || !agendaContent) return;
+  const phase = phaseLabel[status.phase] || status.phase || "—";
+  const action =
+    pendingActionLabel[status.pending_action] || status.pending_action || "—";
+  const topic = status.current_topic || "（暂无）";
+  const followups = status.followup_queue || [];
+  const upcoming = status.upcoming_questions || [];
+  const compStatus = status.competency_status || {};
+
+  const followupHtml = followups.length
+    ? `<ol class="agenda-list">${followups
+        .map((q) => `<li>${escapeHtml(q)}</li>`)
+        .join("")}</ol>`
+    : `<p class="muted small">暂无待追问</p>`;
+
+  const upcomingHtml = upcoming.length
+    ? upcoming
+        .map(
+          (q, i) => `
+      <div class="agenda-question-card">
+        <span class="badge badge-muted">${escapeHtml(q.category || "题目")} · ${escapeHtml(q.difficulty || "—")}</span>
+        <p><strong>Q${(status.question_index || 0) + i + 1}.</strong> ${escapeHtml(q.question)}</p>
+        <p class="muted small">考察：${escapeHtml(q.competency || "—")}</p>
+      </div>`
+        )
+        .join("")
+    : `<p class="muted small">暂无排队主题目</p>`;
+
+  const compKeys = Object.keys(compStatus);
+  const compHtml = compKeys.length
+    ? `<ul class="agenda-comp-list">${compKeys
+        .map(
+          (k) =>
+            `<li><span class="comp-badge comp-${compStatus[k]}">${competencyStatusLabel[compStatus[k]] || compStatus[k]}</span> ${escapeHtml(k)}</li>`
+        )
+        .join("")}</ul>`
+    : `<p class="muted small">暂无考察点计划</p>`;
+
+  agendaContent.innerHTML = `
+    <div class="agenda-section">
+      <h4>当前状态</h4>
+      <p class="agenda-meta"><span>阶段：${escapeHtml(phase)}</span> · <span>动作：${escapeHtml(action)}</span></p>
+      <p class="agenda-topic"><strong>当前议题：</strong>${escapeHtml(topic)}</p>
+    </div>
+    <div class="agenda-section">
+      <h4>待追问队列</h4>
+      ${followupHtml}
+    </div>
+    <div class="agenda-section">
+      <h4>主题目预告</h4>
+      ${upcomingHtml}
+    </div>
+    <div class="agenda-section">
+      <h4>考察点覆盖</h4>
+      ${compHtml}
+    </div>`;
 }
 
 function reportUrl() {
@@ -125,12 +208,6 @@ function setupInterviewNav(status) {
     sessionActive: active,
     back: { label: "返回筛选", href: screeningBackHref() },
   });
-}
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 function updateMeta(status) {
@@ -166,6 +243,7 @@ async function refreshStatus() {
   try {
     const status = await apiRequest(`/api/interview/${sessionId}/status`);
     updateMeta(status);
+    renderAgendaPanel(status);
     setupInterviewNav(status);
     return status;
   } catch {
@@ -474,6 +552,15 @@ document.getElementById("toggle-live").addEventListener("click", () => {
   const btn = document.getElementById("toggle-live");
   sidebar.classList.toggle("collapsed");
   btn.textContent = sidebar.classList.contains("collapsed") ? "展开" : "收起";
+});
+
+document.querySelectorAll(".sidebar-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const name = tab.dataset.tab;
+    document.querySelectorAll(".sidebar-tab").forEach((t) => t.classList.toggle("active", t === tab));
+    liveContent.classList.toggle("hidden", name !== "live");
+    agendaContent.classList.toggle("hidden", name !== "agenda");
+  });
 });
 
 async function init() {

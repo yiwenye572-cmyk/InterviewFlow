@@ -257,6 +257,42 @@ async function createNewJob() {
   }
 }
 
+async function pollScreenBatch(batchId, total) {
+  const modal = document.getElementById("screen-progress-modal");
+  const summary = document.getElementById("screen-progress-summary");
+  const bar = document.getElementById("screen-progress-bar");
+  const list = document.getElementById("screen-progress-list");
+  modal.classList.remove("hidden");
+
+  const statusLabel = {
+    pending: "等待",
+    running: "进行中",
+    done: "完成",
+    failed: "失败",
+  };
+
+  for (;;) {
+    const data = await apiRequest(`/api/screen/batch/${batchId}`);
+    const pct = data.total ? Math.round((data.completed / data.total) * 100) : 0;
+    bar.style.width = `${pct}%`;
+    summary.textContent = `筛选中 ${data.completed}/${data.total}${data.failed ? ` · ${data.failed} 失败` : ""}`;
+    list.innerHTML = (data.items || [])
+      .map(
+        (item) =>
+          `<li class="batch-item batch-${item.status}"><span>${escapeHtml(item.filename)}</span><span>${statusLabel[item.status] || item.status}${item.error ? ` — ${escapeHtml(item.error)}` : ""}</span></li>`
+      )
+      .join("");
+
+    if (data.status === "completed") {
+      await new Promise((r) => setTimeout(r, 400));
+      modal.classList.add("hidden");
+      window.location.href = `/screening.html?job_id=${selectedJobId}`;
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
 async function uploadAndScreen() {
   if (!selectedJobId) {
     showToast("请先在左侧选择岗位", true);
@@ -292,17 +328,20 @@ async function uploadAndScreen() {
     idsToScreen = getSelectedResumeIds();
     if (!idsToScreen.length) {
       showToast("请至少勾选一份要筛选的简历", true);
+      uploadAndScreenBtn.disabled = false;
+      uploadAndScreenBtn.textContent = "上传并筛选";
       return;
     }
 
     uploadAndScreenBtn.innerHTML = '<span class="spinner"></span> 筛选中...';
-    await apiRequest(`/api/screen/${selectedJobId}`, {
+    const batch = await apiRequest(`/api/screen/${selectedJobId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resume_ids: idsToScreen }),
+      body: JSON.stringify({ resume_ids: idsToScreen, async: true }),
     });
-    window.location.href = `/screening.html?job_id=${selectedJobId}`;
+    await pollScreenBatch(batch.batch_id, batch.total);
   } catch (err) {
+    document.getElementById("screen-progress-modal")?.classList.add("hidden");
     showToast(err.message, true);
     uploadAndScreenBtn.disabled = false;
     uploadAndScreenBtn.textContent = "上传并筛选";
