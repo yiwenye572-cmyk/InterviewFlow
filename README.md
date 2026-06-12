@@ -1,4 +1,4 @@
-# AI 招聘助手 MVP
+# AI 招聘助手 
 
 > **在线演示**：https://nainong.tech/airecruit/
 
