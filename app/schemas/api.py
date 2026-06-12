@@ -16,6 +16,24 @@ class ResumeUploadResponse(BaseModel):
     count: int
 
 
+class ResumeListItem(BaseModel):
+    resume_id: int
+    filename: str
+    candidate_name: str = "Unknown"
+    parse_status: str = "pending"
+    screened: bool = False
+    final_score: float | None = None
+
+
+class JobResumeListResponse(BaseModel):
+    job_id: int
+    resumes: list[ResumeListItem] = Field(default_factory=list)
+
+
+class ScreenRequest(BaseModel):
+    resume_ids: list[int] = Field(min_length=1)
+
+
 class ScreeningResultItem(BaseModel):
     resume_id: int
     filename: str
@@ -149,6 +167,8 @@ class JobListItem(BaseModel):
     resume_count: int = 0
     interview_count: int = 0
     completed_interview_count: int = 0
+    jd_summary: str = ""
+    has_structured: bool = False
 
 
 class InterviewSummaryItem(BaseModel):

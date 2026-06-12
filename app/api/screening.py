@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.entities import Job, Resume, ScreeningResult
 from app.schemas.api import (
     QuestionPackResponse,
+    ScreenRequest,
     ScreeningDetailResponse,
     ScreeningResultItem,
     ScreeningResultsResponse,
@@ -24,15 +25,26 @@ router = APIRouter(prefix="/api/screen", tags=["screening"])
 
 
 @router.post("/{job_id}")
-def run_screening(job_id: int, db: Session = Depends(get_db)):
+def run_screening(
+    job_id: int,
+    payload: ScreenRequest | None = None,
+    db: Session = Depends(get_db),
+):
     job = db.get(Job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    resume_ids = payload.resume_ids if payload else None
     try:
-        screen_job(db, job_id)
+        results = screen_job(db, job_id, resume_ids=resume_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return {"job_id": job_id, "message": "Screening completed"}
+    return {
+        "job_id": job_id,
+        "message": "Screening completed",
+        "count": len(results),
+    }
 
 
 def _load_structured_resume(resume: Resume) -> tuple[str, dict | None, list[str], str]:

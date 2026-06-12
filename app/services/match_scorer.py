@@ -18,7 +18,9 @@ from app.services.resume_extractor import (
 )
 
 
-def screen_job(db: Session, job_id: int) -> list[ScreeningResult]:
+def screen_job(
+    db: Session, job_id: int, resume_ids: list[int] | None = None
+) -> list[ScreeningResult]:
     job = db.get(Job, job_id)
     if not job:
         raise ValueError(f"Job {job_id} not found")
@@ -34,7 +36,13 @@ def screen_job(db: Session, job_id: int) -> list[ScreeningResult]:
     settings = get_settings()
     results: list[ScreeningResult] = []
 
-    resumes = db.query(Resume).filter(Resume.job_id == job_id).all()
+    query = db.query(Resume).filter(Resume.job_id == job_id)
+    if resume_ids is not None:
+        query = query.filter(Resume.id.in_(resume_ids))
+    resumes = query.all()
+    if resume_ids is not None and len(resumes) != len(set(resume_ids)):
+        raise ValueError("One or more resume_ids not found for this job")
+
     for resume in resumes:
         result = _screen_single_resume(
             db, job, job_structured, resume, settings.match_threshold, score_flags

@@ -86,6 +86,7 @@ class HistoryService:
                 .scalar()
                 or 0
             )
+            jd_summary, _ = _jd_summary(job)
             items.append(
                 JobListItem(
                     id=job.id,
@@ -95,6 +96,8 @@ class HistoryService:
                     resume_count=resume_count,
                     interview_count=interview_count,
                     completed_interview_count=completed,
+                    jd_summary=jd_summary,
+                    has_structured=bool(job.structured_json),
                 )
             )
         return items
@@ -172,6 +175,8 @@ class HistoryService:
                 resume_count=resume_count,
                 interview_count=interview_count,
                 completed_interview_count=completed,
+                jd_summary=jd_summary,
+                has_structured=bool(job.structured_json),
             ),
             jd_summary=jd_summary,
             jd_structured=jd_structured,

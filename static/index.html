@@ -7,82 +7,79 @@
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-  <div class="container">
+  <div class="container home-page">
     <header>
       <h1>AI 招聘助手</h1>
-      <p>上传 JD 与简历，开启智能筛选与模拟面试</p>
-      <p><a href="/history.html">历史岗位与面试报告 →</a></p>
+      <p>选中 JD 后上传简历并筛选；可勾选要参与的简历</p>
+      <p><a href="/history.html">完整历史与面试报告 →</a></p>
     </header>
 
     <nav class="steps">
-      <span class="step active">1. 上传</span>
-      <span class="step">2. 筛选</span>
-      <span class="step">3. 面试</span>
-      <span class="step">4. 报告</span>
+      <span class="step active">1. JD</span>
+      <span class="step">2. 简历</span>
+      <span class="step">3. 筛选</span>
+      <span class="step">4. 面试</span>
     </nav>
 
-    <div class="card">
-      <h2>职位描述 (JD)</h2>
-      <div class="field">
-        <label for="jd-file">上传 JD 文件 (PDF / DOCX / TXT)</label>
-        <input type="file" id="jd-file" accept=".pdf,.docx,.txt" />
-      </div>
-    </div>
+    <div class="home-layout">
+      <aside class="card job-sidebar" id="job-sidebar">
+        <div class="sidebar-header">
+          <h2>历史岗位 (JD)</h2>
+          <button type="button" id="new-job-btn" class="btn btn-secondary btn-sm">+ 新建</button>
+        </div>
+        <div id="job-list" class="job-list">
+          <p class="muted">加载中...</p>
+        </div>
+      </aside>
 
-    <div class="card">
-      <h2>候选人简历</h2>
-      <div class="field">
-        <label for="resume-files">上传一份或多份简历 (PDF / DOCX / TXT)</label>
-        <input type="file" id="resume-files" accept=".pdf,.docx,.txt" multiple />
-      </div>
-    </div>
+      <main class="home-main">
+        <div id="panel-new" class="home-panel">
+          <div class="card">
+            <h2>新建岗位 — 上传 JD</h2>
+            <p class="muted">仅上传职位描述；简历在选定 JD 后上传并筛选。</p>
+            <div class="field">
+              <label for="jd-file">JD 文件 (PDF / DOCX / TXT)</label>
+              <input type="file" id="jd-file" accept=".pdf,.docx,.txt" />
+            </div>
+            <div class="actions">
+              <button id="submit-new-btn" class="btn btn-primary">创建岗位</button>
+            </div>
+          </div>
+        </div>
 
-    <div class="actions">
-      <button id="submit-btn" class="btn btn-primary">上传并开始筛选</button>
+        <div id="panel-existing" class="home-panel hidden">
+          <div class="card" id="selected-job-card">
+            <h2 id="selected-job-title">—</h2>
+            <p class="muted" id="selected-job-meta"></p>
+            <p id="selected-job-summary" class="jd-summary-preview"></p>
+          </div>
+
+          <div class="card">
+            <h2>简历与筛选</h2>
+            <p class="muted">上传新简历或勾选已有简历，一次完成筛选。</p>
+            <div class="field">
+              <label for="resume-files-existing">选择文件 (PDF / DOCX / TXT，可多选)</label>
+              <input type="file" id="resume-files-existing" accept=".pdf,.docx,.txt" multiple />
+            </div>
+            <div class="resume-list-header">
+              <h3 class="resume-list-subtitle">参与本次筛选的简历</h3>
+              <label class="select-all-label">
+                <input type="checkbox" id="select-all-resumes" /> 全选
+              </label>
+            </div>
+            <div id="resume-list" class="resume-select-list">
+              <p class="muted">暂无简历，请选择文件后点击「上传并筛选」。</p>
+            </div>
+            <div class="actions">
+              <button id="upload-and-screen-btn" class="btn btn-primary" disabled>上传并筛选</button>
+              <button id="enter-screen-btn" class="btn btn-secondary hidden">查看筛选结果</button>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
 
-  <script type="module">
-    import { showToast, apiRequest } from "/static/js/api.js";
-
-    const submitBtn = document.getElementById("submit-btn");
-
-    submitBtn.addEventListener("click", async () => {
-      const jdFile = document.getElementById("jd-file").files[0];
-      const resumeFiles = document.getElementById("resume-files").files;
-
-      if (!jdFile) {
-        showToast("请先上传 JD 文件", true);
-        return;
-      }
-      if (!resumeFiles.length) {
-        showToast("请至少上传一份简历", true);
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span> 处理中...';
-
-      try {
-        const jdForm = new FormData();
-        jdForm.append("file", jdFile);
-        const job = await apiRequest("/api/jobs", { method: "POST", body: jdForm });
-
-        const resumeForm = new FormData();
-        for (const f of resumeFiles) resumeForm.append("files", f);
-        await apiRequest(`/api/resumes?job_id=${job.id}`, {
-          method: "POST",
-          body: resumeForm,
-        });
-
-        await apiRequest(`/api/screen/${job.id}`, { method: "POST" });
-        window.location.href = `/screening.html?job_id=${job.id}`;
-      } catch (err) {
-        showToast(err.message, true);
-        submitBtn.disabled = false;
-        submitBtn.textContent = "上传并开始筛选";
-      }
-    });
-  </script>
+  <script type="module" src="/static/js/home.js"></script>
 </body>
 </html>

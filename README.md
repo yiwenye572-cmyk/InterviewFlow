@@ -4,7 +4,7 @@
 
 ## 功能概览
 
-1. **上传**：JD + 多份简历（PDF / DOCX / TXT）
+1. **上传**：先选/建 JD，再**上传并筛选**简历（PDF / DOCX / TXT）；首页左侧历史岗位可复用 JD，右侧可勾选要参与的简历
 
 > **TXT 说明**：`.txt` 与 PDF/DOCX 同等支持。若筛选页显示 `failed` / `Unknown`，通常是 **LLM 结构化抽取**失败（非格式拒绝），可在 Network 或 `decision_summary` 查看原因；运行 `python scripts/diagnose_resume.py --file JL.txt` 本地复现。项目内 [`samples/yeyiwen_resume.txt`](samples/yeyiwen_resume.txt) + [`samples/shopee_jd.txt`](samples/shopee_jd.txt) 为 Markdown 模板回归用例。
 2. **筛选（A 薄层）**：JD/简历结构化抽取 → 混合打分 → 追问包（3–5）→ 按需试题包（≥10）→ 决策建议
@@ -190,6 +190,13 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 浏览器打开：http://localhost:8000
 
+**首页流程**
+
+1. 左侧点历史岗位，或「+ 新建」上传 JD
+2. 右侧查看 JD 摘要 → 选择简历文件（可选勾选已有简历）→ **上传并筛选**
+3. 若该岗位之前筛过 → **查看筛选结果**
+4. 刷新页面后仍记住上次选中的 JD（localStorage）
+
 ### 4. Demo 样本
 
 `samples/` 目录提供了 JD 与两份对比简历（高匹配 / 低匹配）：
@@ -203,10 +210,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/jobs` | 上传 JD |
-| GET | `/api/jobs` | 历史岗位列表 |
+| GET | `/api/jobs` | 历史岗位列表（含 `jd_summary`、`has_structured`；首页左侧侧栏数据源） |
 | GET | `/api/jobs/{id}/overview` | 岗位 JD 摘要 + 面试记录 |
 | POST | `/api/resumes?job_id=` | 批量上传简历 |
-| POST | `/api/screen/{job_id}` | 触发筛选 |
+| GET | `/api/jobs/{id}/resumes` | 岗位下简历列表（供首页勾选后筛选） |
+| POST | `/api/screen/{job_id}` | 筛选；body `{ "resume_ids": [1,2] }` 仅筛选中简历；无 body 则筛全部 |
 | GET | `/api/screen/{job_id}/results` | 筛选结果 |
 | GET | `/api/screen/{job_id}/detail/{resume_id}` | 单候选人 A 层详情 |
 | GET | `/api/screen/{job_id}/questions/{resume_id}` | 懒加载试题包（≥10） |
@@ -276,7 +284,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ## Demo 视频脚本（≥2 分钟）
 
 **A 段（约 40s）**
-1. 上传 JD + 2 份简历
+1. 左侧选 JD（或新建）→ 上传简历并筛选
 2. 筛选列表对比分数、维度分、decision_summary
 3. 展开详情：追问建议 3–5 条
 4. 点击「生成试题」展示 ≥10 道预生成题

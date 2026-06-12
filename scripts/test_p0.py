@@ -71,16 +71,25 @@ def main() -> None:
 
     files = [("files", ("resume_good.txt", (SAMPLES / "resume_good.txt").read_bytes(), "text/plain"))]
     requests.post(f"{BASE}/api/resumes?job_id={job_id}", files=files, timeout=60).raise_for_status()
+    resume_list = requests.get(f"{BASE}/api/jobs/{job_id}/resumes", timeout=30).json()["resumes"]
+    if not resume_list:
+        fail("GET /api/jobs/{id}/resumes empty")
+    resume_id = resume_list[0]["resume_id"]
+    ok(f"list resumes count={len(resume_list)}")
 
     print("[....] screening...")
-    requests.post(f"{BASE}/api/screen/{job_id}", timeout=300).raise_for_status()
+    requests.post(f"{BASE}/api/screen/{job_id}", json={"resume_ids": [resume_id]}, timeout=300).raise_for_status()
     results = requests.get(f"{BASE}/api/screen/{job_id}/results", timeout=30).json()["results"]
-    resume_id = results[0]["resume_id"]
 
     r = requests.get(f"{BASE}/api/jobs", timeout=10)
     if r.status_code != 200 or not r.json().get("jobs"):
         fail("GET /api/jobs empty or failed")
-    ok(f"GET /api/jobs count={len(r.json()['jobs'])}")
+    job_item = next((j for j in r.json()["jobs"] if j["id"] == job_id), None)
+    if not job_item:
+        fail("uploaded job not in GET /api/jobs list")
+    if "jd_summary" not in job_item or "has_structured" not in job_item:
+        fail("JobListItem missing jd_summary/has_structured")
+    ok(f"GET /api/jobs count={len(r.json()['jobs'])} summary={bool(job_item.get('jd_summary'))}")
 
     r = requests.post(
         f"{BASE}/api/interview/start",

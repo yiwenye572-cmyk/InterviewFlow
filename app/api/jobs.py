@@ -1,15 +1,21 @@
-import json
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.entities import Job
-from app.schemas.api import JobListResponse, JobOverviewResponse, JobResponse
+from app.models.entities import Job, Resume, ScreeningResult
+from app.schemas.api import (
+    JobListResponse,
+    JobOverviewResponse,
+    JobResponse,
+    JobResumeListResponse,
+    ResumeListItem,
+)
 from app.services.document_parser import parse_document
 from app.services.history_service import HistoryService
 from app.services.job_templates import list_templates
+from app.services.resume_extractor import extract_jd_structured
 from app.services.rubric_parser import parse_rubric_text, rubric_to_context
+from app.schemas.resume_structured import ResumeStructured
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -44,6 +50,44 @@ def get_job_overview(job_id: int, db: Session = Depends(get_db)):
     return overview
 
 
+def _resume_display_name(resume: Resume) -> str:
+    if resume.structured_json:
+        try:
+            return ResumeStructured.model_validate_json(resume.structured_json).name
+        except Exception:
+            pass
+    return resume.filename.rsplit(".", 1)[0]
+
+
+@router.get("/{job_id}/resumes", response_model=JobResumeListResponse)
+def list_job_resumes(job_id: int, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    resumes = db.query(Resume).filter(Resume.job_id == job_id).order_by(Resume.id.desc()).all()
+    items: list[ResumeListItem] = []
+    for resume in resumes:
+        screening = (
+            db.query(ScreeningResult)
+            .filter(
+                ScreeningResult.job_id == job_id,
+                ScreeningResult.resume_id == resume.id,
+            )
+            .first()
+        )
+        items.append(
+            ResumeListItem(
+                resume_id=resume.id,
+                filename=resume.filename,
+                candidate_name=_resume_display_name(resume),
+                parse_status=resume.parse_status,
+                screened=screening is not None,
+                final_score=screening.final_score if screening else None,
+            )
+        )
+    return JobResumeListResponse(job_id=job_id, resumes=items)
+
+
 @router.post("/{job_id}/rubric")
 async def upload_rubric(
     job_id: int,
@@ -76,4 +120,15 @@ async def create_job(
     db.add(job)
     db.commit()
     db.refresh(job)
+
+    try:
+        structured = extract_jd_structured(parsed.raw_text)
+        job.structured_json = structured.model_dump_json(ensure_ascii=False)
+        if structured.title:
+            job.title = structured.title
+        db.commit()
+        db.refresh(job)
+    except Exception:
+        pass
+
     return JobResponse(id=job.id, title=job.title, filename=job.filename)
