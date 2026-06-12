@@ -16,6 +16,10 @@
 | **架构与数据流** | [系统架构](#系统架构) |
 | **Prompt 设计思路** | [Prompt 设计](#prompt-设计思路) |
 | **难点与解决方案** | [难点与解决方案](#难点与解决方案) |
+| **AI 工程化能力** | [LLM Harness](#llm-harness) · [简历 Grounding](#简历-grounding-回验) · [Stream Guard](#流式输出后验stream-guard) |
+| **LLM Harness 单测** | `python scripts/test_llm_harness.py`（11 项 mock） |
+| **简历 Grounding 单测** | `python scripts/test_resume_validator.py`（6 项规则） |
+| **Stream Guard 单测** | `python scripts/test_stream_guard.py`（7 项 mock） |
 | **界面截图** | [`screenshots/`](screenshots/) 主流程配图，见 [界面预览](#界面预览) |
 
 ---
@@ -23,7 +27,7 @@
 ## 功能概览
 
 1. **上传**：左侧历史岗位复用 JD，右侧上传/勾选简历 → **上传并筛选**（支持 PDF / DOCX / TXT）
-2. **筛选（A 层）**：结构化抽取 → 混合打分 → 追问包（3–5）→ 试题包（≥10，懒加载）→ 决策建议
+2. **筛选（A 层）**：结构化抽取 → **Grounding 回验** → 混合打分 → 追问包（3–5）→ 试题包（≥10，懒加载）→ 决策建议
 3. **面试（B 层）**：消费 A 层种子，LangGraph 多轮动态面试（自适应 / 标准化双模式）
 4. **报告**：岗位匹配、沟通能力、风险点、下轮建议；Self-reflection 修正；**异步生成 + 进度轮询**
 
@@ -91,7 +95,7 @@
 ### 五阶段流水线
 
 ```
-上传解析 → 结构化抽取 → 向量索引 → 混合打分 → 追问包 / 试题包
+上传解析 → 结构化抽取 → [Grounding 回验] → 向量索引 → 混合打分 → 追问包 / 试题包
 ```
 
 ### A → B 交接
@@ -150,6 +154,7 @@ InitPersona → StreamOpening → WaitAnswer
 - **追问上限**：`max_followup_streak`（0–3，默认 2），达上限后换题并标记 `at_risk`
 - **鼓励话术**：`hesitant` / `stuck` 时可输出鼓励，**Calibrator 不参与**，不抬高分数
 - **输入安全**：`input_guard.py` 拦截 jailbreak / prompt 泄露，短路 Evaluate
+- **输出后验**：`stream_guard.py` 对开场 / 追问 / 提问缓冲校验，失败则 rewrite 或模板兜底（见 [Stream Guard](#流式输出后验stream-guard)）
 - **评分可审计**：`evaluations_log` + 报告页「评分时间线」展示每轮 Δ 与依据
 - **语音 MVP（可选）**：豆包 ASR + TTS，`/voice/turn` 一轮语音；未配置 Key 时返回 503，文字模式不受影响
 
@@ -275,7 +280,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Prompt 设计思路
 
-关键 Prompt 位于 `prompts/` 目录，结构化输出统一走 `structured_completion()`：Pydantic 校验 → 失败重试 → JSON repair。
+关键 Prompt 位于 `prompts/` 目录，结构化输出统一走 [`app/services/llm/`](app/services/llm/) Harness 的 `structured_completion()`：Pydantic 校验 → 按错误类型智能 Retry → JSON repair。
 
 | 文件 | 用途 |
 |------|------|
@@ -300,21 +305,57 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | 流式 SSE 与同步 LLM | 后台线程 + Queue 转发 token |
 | 混合匹配分 | Chroma 语义 40% + LLM rubric 60%；双阈值推荐 |
 | 「水答高分」 | Calibrator 独立校准；时间线可审计 |
-| Prompt 注入 / 越狱 | `input_guard` 规则预检 + Prompt 加固 |
+| Prompt 注入 / 越狱 | `input_guard` 规则预检（候选人输入）+ Prompt 加固 |
+| 简历结构化幻觉 | `resume_validator` 抽取后 grounding；`validation_*` 写入 `score_flags` |
+| 面试官输出跑题 / 泄露 | `stream_guard` 缓冲后验 + LLM rewrite + 模板兜底 |
+| LLM 调用不可观测 | `app/services/llm/` 统一 Harness + `data/llm_calls.jsonl` |
 | 报告生成耗时 | 异步 Worker + 阶段进度；前端轮询 skeleton |
 | 语音集成 | 豆包 ASR WebSocket + TTS SSE；文本模式默认不受影响 |
 
 ---
 
+## AI 工程化能力
+
+面向阿里题目「Agent 编排 + Harness + 幻觉/格式治理」，本项目在 A/B 两层分别落地三层防护：
+
+| 层级 | 模块 | 作用 |
+|------|------|------|
+| 全链路 | [`app/services/llm/`](app/services/llm/) | 统一 LLM 调用、Timeout、日志、智能 Retry |
+| A 层筛选 | [`app/services/resume_validator.py`](app/services/resume_validator.py) | 简历抽取**成功后**事实回验 |
+| B 层面试 | [`app/services/interview/stream_guard.py`](app/services/interview/stream_guard.py) | 开场 / 追问 / 提问**流式输出**后验 |
+| B 层面试 | [`app/services/interview/input_guard.py`](app/services/interview/input_guard.py) | **候选人**输入安全（与 Stream Guard 分工） |
+
+---
+
 ## LLM Harness
 
-所有 DashScope 文本调用统一经 `app/services/llm/` Harness 层（`chat_completion` / `chat_completion_stream` / `structured_completion` 对外签名不变）：
+所有 DashScope 文本调用统一经 `app/services/llm/`（[`chat_completion`](app/services/llm/__init__.py) / `chat_completion_stream` / `structured_completion` 对外签名不变，11 个业务调用方无需改 import）。
 
-- **Timeout**：普通 structured 30s、报告 60s、流式 120s（`.env` 可配）
-- **截断**：system / user 分层字符上限，写入日志 `truncated` 标记
-- **JSONL 日志**：`data/llm_calls.jsonl`（`call_id`、model、latency、tokens、cost_cny、retry_attempt）
-- **智能 Retry**：JSON 解析 / Pydantic 校验 / API / Timeout 分类处理；校验失败可升级 `qwen-turbo → qwen-plus`
-- **观测扩展**：`TraceAdapter` 接口预留 LangSmith / OpenTelemetry（默认 NoOp）
+### 能力
+
+| 能力 | 说明 |
+|------|------|
+| **Timeout** | 普通 structured 30s、报告 60s、流式 idle 120s（`.env` 可配） |
+| **截断** | system / user 分层字符上限；JSONL 记录 `truncated` 标记 |
+| **JSONL 日志** | `data/llm_calls.jsonl`：`call_id`、model、latency、tokens、cost_cny、retry_attempt |
+| **智能 Retry** | JSON 解析 / Pydantic 校验 / API / Timeout 分类；校验失败可升级 `qwen-turbo → qwen-plus` |
+| **观测扩展** | `TraceAdapter` 预留 LangSmith / OpenTelemetry（默认 NoOp） |
+
+### 环境变量
+
+```env
+LLM_LOG_ENABLED=true
+LLM_LOG_PATH=data/llm_calls.jsonl
+LLM_TIMEOUT_DEFAULT=30
+LLM_TIMEOUT_REPORT=60
+LLM_TIMEOUT_STREAM=120
+LLM_MAX_SYSTEM_CHARS=8000
+LLM_MAX_USER_CHARS=12000
+LLM_STRUCTURED_MAX_RETRIES=2
+LLM_TRACE_BACKEND=none
+```
+
+### 自测
 
 ```bash
 python scripts/test_llm_harness.py   # mock 单测，不耗 API Key
@@ -324,12 +365,38 @@ python scripts/test_llm_harness.py   # mock 单测，不耗 API Key
 
 ## 简历 Grounding 回验
 
-LLM 结构化抽取**成功后**（非 `parse_partial_fallback` 降级路径），[`app/services/resume_validator.py`](app/services/resume_validator.py) 对原文做事实回验：
+LLM 结构化抽取**成功后**（**非** `parse_partial_fallback` 降级路径），[`app/services/resume_validator.py`](app/services/resume_validator.py) 在 [`match_scorer.py`](app/services/match_scorer.py) 入库打分前对原文做事实回验：
 
-- **字段 grounding**：姓名、公司、学校、联系方式须在原文 fuzzy 命中
-- **Skills**：未命中 skill 写入 `ambiguities` 并标记 `validation_skill_ungrounded:*`
-- **年限 sanity**：`years_experience` 与经历时间段矛盾时标记 `validation_years_inflated`
-- **输出**：`validation_*` flags 并入筛选结果 `score_flags`；严重幻觉可将 `success → partial` 并扣 `RESUME_VALIDATION_SCORE_PENALTY` 分
+```
+extract_resume_structured → validate_resume_grounding → structured_json + 打分
+build_partial_structured（抽取失败降级）→ 跳过回验
+```
+
+### 校验项
+
+| 类型 | 规则 | 典型 flag |
+|------|------|-----------|
+| 字段 grounding | 姓名、公司、学校、联系方式须在原文 fuzzy 命中 | `validation_name_ungrounded`、`validation_company_ungrounded:*` |
+| Skills | 每个 skill 子串 / token 匹配；未命中写入 `ambiguities` | `validation_skill_ungrounded:*`、`validation_skills_low_ratio` |
+| 年限 sanity | `years_experience` 与经历时间段估算矛盾 | `validation_years_inflated` |
+
+### 处置策略
+
+- `validation_*` flags 并入筛选结果 **`score_flags`**（API 可见）
+- 严重幻觉：`success → partial`（`validation_force_partial`）
+- warn/fail 时从 **`final_score` 扣** `RESUME_VALIDATION_SCORE_PENALTY` 分（默认 5）
+
+### 环境变量
+
+```env
+RESUME_VALIDATION_ENABLED=true
+RESUME_VALIDATION_SKILL_MIN_RATIO=0.6
+RESUME_VALIDATION_NAME_REQUIRED=true
+RESUME_VALIDATION_SCORE_PENALTY=5
+RESUME_VALIDATION_FORCE_PARTIAL_SEVERE=2
+```
+
+### 自测
 
 ```bash
 python scripts/test_resume_validator.py   # 纯规则单测，不耗 API
@@ -339,12 +406,58 @@ python scripts/test_resume_validator.py   # 纯规则单测，不耗 API
 
 ## 流式输出后验（Stream Guard）
 
-B 层开场 / 追问 / 提问在 SSE 下发前经 [`app/services/interview/stream_guard.py`](app/services/interview/stream_guard.py) 缓冲后验：
+B 层 **开场 / 追问 / 提问** 在 SSE 下发前经 [`app/services/interview/stream_guard.py`](app/services/interview/stream_guard.py) **缓冲完整文本 → 后验 → 再分块 yield**（避免坏内容已推送无法撤回）。`stream_encouragement` / `stream_closing` 不在此范围。
 
-- **规则检查**：长度、AI 自述、system 泄露、离题指令、是否含提问（开场/换题）
-- **人设漂移**：`tech_lead` vs `hr_friendly` 关键词检测
-- **失败策略**：可选 fast 模型重写 1 次 → 仍失败则 persona 模板兜底
-- **分工**：`input_guard` 拦截**候选人**输入；Stream Guard 校验**面试官**输出
+```mermaid
+flowchart LR
+  stream[LLM stream_opening/followup/question] --> buf[缓冲全文]
+  buf --> validate[validate_stream_output]
+  validate -->|pass| yield[SSE 分块 yield]
+  validate -->|fail| rewrite[LLM rewrite 1 次]
+  rewrite -->|pass| yield
+  rewrite -->|fail| tpl[persona 模板兜底]
+  tpl --> yield
+```
+
+```
+stream_opening/followup/question → 缓冲全文 → validate → [LLM rewrite] → [模板兜底] → SSE 分块
+```
+
+### 规则后验
+
+| 检查 | flag 示例 |
+|------|-----------|
+| 过短 / 空 | `stream_guard_too_short`、`stream_guard_empty` |
+| AI 自述 | `stream_guard_ai_leak` |
+| System 泄露 | `stream_guard_system_leak`（复用 input_guard 模式） |
+| 离题指令 | `stream_guard_off_topic` |
+| 无提问（开场/换题） | `stream_guard_no_question` |
+| 人设漂移 | `stream_guard_persona_drift`（tech_lead 忌 HR 腔；hr_friendly 忌攻击性用语） |
+
+### 失败策略
+
+1. 规则 fail 或仅 persona 漂移 → 可选 **fast 模型重写 1 次**（`purpose=stream_guard_rewrite`）
+2. 仍 fail → **persona 模板兜底**（`stream_guard_template_fallback`）
+
+### 与 input_guard 分工
+
+| 模块 | 校验对象 |
+|------|----------|
+| `input_guard` | **候选人**回答（jailbreak / 泄露 / 离题） |
+| `stream_guard` | **面试官**流式输出（AI 泄露 / 人设漂移 / 无提问） |
+
+### 环境变量
+
+```env
+STREAM_GUARD_ENABLED=true
+STREAM_GUARD_MIN_CHARS=10
+STREAM_GUARD_MAX_CHARS=2000
+STREAM_GUARD_LLM_REWRITE=true
+```
+
+关闭后验：`STREAM_GUARD_ENABLED=false`，行为与改造前一致（边收边 yield）。
+
+### 自测
 
 ```bash
 python scripts/test_stream_guard.py   # mock 单测，不耗 API
@@ -408,6 +521,11 @@ curl http://127.0.0.1:8001/health
 ## 测试与自检
 
 ```bash
+# AI 工程化单测（mock，不耗 API Key）
+python scripts/test_llm_harness.py
+python scripts/test_resume_validator.py
+python scripts/test_stream_guard.py
+
 # 环境检查
 python scripts/check_env.py
 
@@ -461,10 +579,14 @@ app/
   main.py              # FastAPI 入口
   api/                 # REST + SSE 路由
   services/
-    interview/         # LangGraph 面试 Agent（graph, nodes, report…）
-    voice/             # 豆包 ASR/TTS 客户端
-    screen_batch.py    # 异步筛选批次
-    report_async.py    # 异步报告生成
+    llm/                 # LLM Harness（client / retry / log_store）
+    resume_validator.py  # A 层抽取后 grounding
+    interview/           # LangGraph 面试 Agent
+      stream_guard.py    # B 层流式输出后验
+      input_guard.py     # 候选人输入安全
+    voice/               # 豆包 ASR/TTS 客户端
+    screen_batch.py      # 异步筛选批次
+    report_async.py      # 异步报告生成
 static/
   index.html           # 上传 + 筛选入口
   screening.html       # 筛选结果
@@ -478,6 +600,8 @@ templates/             # 岗位 rubric 模板
 samples/               # Demo 样例
 screenshots/           # README 界面配图
 scripts/               # 测试与诊断脚本
-  test_llm_harness.py  # LLM Harness 单测（mock，无 API）
-data/                  # SQLite + Chroma + llm_calls.jsonl（运行时生成，已 gitignore）
+  test_llm_harness.py      # Plan 1：LLM Harness
+  test_resume_validator.py # Plan 2：简历 Grounding
+  test_stream_guard.py     # Plan 3：Stream Guard
+data/                  # SQLite + Chroma + llm_calls.jsonl（运行时，已 gitignore）
 
