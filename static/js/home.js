@@ -1,4 +1,5 @@
 import { showToast, apiRequest } from "/static/js/api.js";
+import { initAppNav } from "/static/js/nav.js";
 
 const STORAGE_KEY = "selectedJobId";
 
@@ -337,3 +338,4 @@ uploadAndScreenBtn.addEventListener("click", uploadAndScreen);
 enterScreenBtn.addEventListener("click", enterScreening);
 
 loadJobSidebar();
+initAppNav({ currentStep: 1 });

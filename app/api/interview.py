@@ -38,6 +38,7 @@ def _build_report_response(session: InterviewSession) -> ReportResponse:
     feedback = InterviewService.parse_candidate_feedback(session)
     return ReportResponse(
         session_id=session.id,
+        job_id=session.job_id,
         status=session.status,
         report=report,
         evaluations_log=evaluations_log if report else None,

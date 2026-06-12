@@ -1,4 +1,5 @@
 import { showToast, apiRequest, getQueryParam } from "/static/js/api.js";
+import { initAppNav, setNavSessionActive } from "/static/js/nav.js";
 import {
   startRecording,
   stopRecording,
@@ -7,6 +8,7 @@ import {
 
 const sessionId = getQueryParam("session_id");
 const persona = getQueryParam("persona") || "tech_lead";
+let jobId = getQueryParam("job_id");
 
 const chatWindow = document.getElementById("chat-window");
 const userInput = document.getElementById("user-input");
@@ -100,6 +102,31 @@ function renderLiveAssessment(live) {
     <p class="live-updated">置信度：${live.score_confidence != null ? (live.score_confidence * 100).toFixed(0) + "%" : "—"} · 更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
 }
 
+function reportUrl() {
+  const q = jobId ? `&job_id=${jobId}` : "";
+  return `/report.html?session_id=${sessionId}${q}`;
+}
+
+function screeningBackHref() {
+  return jobId ? `/screening.html?job_id=${jobId}` : "/";
+}
+
+function setupInterviewNav(status) {
+  if (status?.job_id && !jobId) {
+    jobId = String(status.job_id);
+  }
+  const active = status?.status === "active";
+  setNavSessionActive(active);
+  initAppNav({
+    currentStep: 3,
+    jobId: jobId ? Number(jobId) : null,
+    sessionId: sessionId ? Number(sessionId) : null,
+    confirmLeave: true,
+    sessionActive: active,
+    back: { label: "返回筛选", href: screeningBackHref() },
+  });
+}
+
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
@@ -135,12 +162,14 @@ function updateMeta(status) {
 }
 
 async function refreshStatus() {
-  if (!sessionId) return;
+  if (!sessionId) return null;
   try {
     const status = await apiRequest(`/api/interview/${sessionId}/status`);
     updateMeta(status);
+    setupInterviewNav(status);
+    return status;
   } catch {
-    /* ignore */
+    return null;
   }
 }
 
@@ -304,7 +333,7 @@ async function sendVoiceTurn(wavBlob) {
       appendSystem("面试即将结束...");
       appendSystem("正在生成评估报告...");
       await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-      window.location.href = `/report.html?session_id=${sessionId}`;
+      window.location.href = reportUrl();
     }
   } catch (err) {
     showToast(err.message, true);
@@ -410,7 +439,7 @@ async function sendAnswer() {
     if (closing || result.pending_action === "stream_closing") {
       appendSystem("正在生成评估报告...");
       await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-      window.location.href = `/report.html?session_id=${sessionId}`;
+      window.location.href = reportUrl();
       return;
     }
   } catch (err) {
@@ -432,7 +461,8 @@ endBtn.addEventListener("click", async () => {
   endBtn.disabled = true;
   try {
     await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-    window.location.href = `/report.html?session_id=${sessionId}`;
+    setNavSessionActive(false);
+    window.location.href = reportUrl();
   } catch (err) {
     showToast(err.message, true);
     endBtn.disabled = false;
@@ -452,8 +482,12 @@ async function init() {
     return;
   }
   setTransportMode("text");
+  setupInterviewNav({ status: "active", job_id: jobId ? Number(jobId) : undefined });
   await restoreMessages();
-  await refreshStatus();
+  const status = await refreshStatus();
+  if (!status) {
+    setupInterviewNav({ status: "active", job_id: jobId ? Number(jobId) : undefined });
+  }
   const msgs = chatWindow.querySelectorAll(".message.user, .message.assistant");
   if (!msgs.length) {
     appendSystem("面试已开始，请等待面试官发言...");

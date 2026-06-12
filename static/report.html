@@ -8,24 +8,11 @@
 </head>
 <body>
   <div class="container">
+    <div id="app-nav"></div>
     <header>
       <h1>候选人评估报告</h1>
       <p>招聘方决策视角 · 过程评估 vs 终局结论 · 多维度打分</p>
     </header>
-
-    <nav class="steps">
-      <span class="step">1. 上传</span>
-      <span class="step">2. 筛选</span>
-      <span class="step">3. 面试</span>
-      <span class="step active">4. 报告</span>
-    </nav>
-
-    <div class="card">
-      <div class="actions" style="margin-top:0">
-        <a href="/" class="btn btn-secondary">返回首页</a>
-        <button id="copy-json" class="btn btn-primary">复制 JSON</button>
-      </div>
-    </div>
 
     <div id="report-container" class="card report-grid">
       <p style="color: var(--muted)">加载报告中...</p>
@@ -34,10 +21,43 @@
 
   <script type="module">
     import { showToast, apiRequest, getQueryParam, recommendationClass } from "/static/js/api.js";
+    import { initAppNav, screeningHref } from "/static/js/nav.js";
 
     const sessionId = getQueryParam("session_id");
+    let jobId = getQueryParam("job_id");
     const container = document.getElementById("report-container");
     let reportData = null;
+
+    function setupReportNav(resolvedJobId) {
+      const jid = resolvedJobId || jobId;
+      const screening = jid ? screeningHref(jid) : null;
+      initAppNav({
+        currentStep: 4,
+        jobId: jid ? Number(jid) : null,
+        sessionId: sessionId ? Number(sessionId) : null,
+        back: screening ? { label: "返回筛选", href: screening } : undefined,
+        extraActions: [
+          ...(screening
+            ? [{ href: screening, label: "继续面试下一位", primary: true }]
+            : []),
+          {
+            type: "button",
+            id: "copy-json",
+            label: "复制 JSON",
+            onClick: () => {
+              if (!reportData) {
+                showToast("暂无报告数据", true);
+                return;
+              }
+              navigator.clipboard.writeText(JSON.stringify(reportData, null, 2));
+              showToast("已复制 JSON 到剪贴板");
+            },
+          },
+        ],
+      });
+    }
+
+    setupReportNav(jobId);
 
     function escapeHtml(text) {
       const div = document.createElement("div");
@@ -169,6 +189,10 @@
       }
       try {
         const data = await apiRequest(`/api/interview/report/${sessionId}`);
+        if (data.job_id && !jobId) {
+          jobId = String(data.job_id);
+          setupReportNav(jobId);
+        }
         reportData = data.report;
         if (!reportData) {
           container.innerHTML = "<p>报告尚未生成，请先完成面试。</p>";
@@ -256,15 +280,6 @@
         container.innerHTML = `<p style="color:var(--danger)">${escapeHtml(err.message)}</p>`;
       }
     }
-
-    document.getElementById("copy-json").addEventListener("click", () => {
-      if (!reportData) {
-        showToast("暂无报告数据", true);
-        return;
-      }
-      navigator.clipboard.writeText(JSON.stringify(reportData, null, 2));
-      showToast("已复制 JSON 到剪贴板");
-    });
 
     loadReport();
   </script>

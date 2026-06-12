@@ -319,6 +319,7 @@ class InterviewService:
                 pass
         return {
             "session_id": session.id,
+            "job_id": session.job_id,
             "status": session.status,
             "phase": session.phase,
             "round_count": session.round_count,

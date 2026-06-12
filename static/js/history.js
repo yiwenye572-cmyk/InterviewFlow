@@ -1,4 +1,5 @@
 import { apiRequest } from "/static/js/api.js";
+import { initAppNav } from "/static/js/nav.js";
 
 const container = document.getElementById("jobs-container");
 
@@ -62,5 +63,10 @@ async function loadJobs() {
   }
 }
 
-document.getElementById("refresh-btn").addEventListener("click", loadJobs);
+initAppNav({
+  currentStep: null,
+  extraActions: [
+    { type: "button", id: "refresh-btn", label: "刷新", primary: true, onClick: loadJobs },
+  ],
+});
 loadJobs();

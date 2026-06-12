@@ -1,4 +1,5 @@
 import { showToast, apiRequest, getQueryParam, scoreClass } from "/static/js/api.js";
+import { initAppNav } from "/static/js/nav.js";
 
 const jobId = getQueryParam("job_id");
 let pendingResumeId = null;
@@ -201,12 +202,20 @@ async function loadQuestions(resumeId) {
   }
 }
 
-document.getElementById("refresh-btn").addEventListener("click", loadResults);
-document.getElementById("close-questions").addEventListener("click", () => {
+document.getElementById("close-questions")?.addEventListener("click", () => {
   questionDrawer.style.display = "none";
 });
 
-document.getElementById("cancel-interview").addEventListener("click", () => {
+initAppNav({
+  currentStep: 2,
+  jobId: jobId ? Number(jobId) : null,
+  back: { label: "返回选 JD", href: "/" },
+  extraActions: [
+    { type: "button", id: "refresh-btn", label: "刷新结果", onClick: loadResults },
+  ],
+});
+
+document.getElementById("cancel-interview")?.addEventListener("click", () => {
   modal.style.display = "none";
   pendingResumeId = null;
 });
@@ -257,7 +266,7 @@ document.getElementById("confirm-interview").addEventListener("click", async () 
       }),
     });
     const mode = session.interview_mode || config.interview_mode;
-    window.location.href = `/interview.html?session_id=${session.session_id}&persona=${persona}&mode=${mode}`;
+    window.location.href = `/interview.html?session_id=${session.session_id}&persona=${persona}&mode=${mode}&job_id=${jobId}`;
   } catch (err) {
     showToast(err.message, true);
     btn.disabled = false;

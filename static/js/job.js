@@ -1,4 +1,5 @@
 import { apiRequest, getQueryParam, recommendationClass, scoreClass } from "/static/js/api.js";
+import { initAppNav, screeningHref } from "/static/js/nav.js";
 
 const jobId = getQueryParam("job_id");
 
@@ -23,10 +24,19 @@ const personaLabel = { tech_lead: "技术总监", hr_friendly: "HR" };
 async function loadOverview() {
   if (!jobId) {
     document.getElementById("jd-summary").textContent = "缺少 job_id";
+    initAppNav({
+      currentStep: null,
+      back: { label: "历史岗位", href: "/history.html" },
+    });
     return;
   }
 
-  document.getElementById("screen-link").href = `/screening.html?job_id=${jobId}`;
+  initAppNav({
+    currentStep: null,
+    jobId: Number(jobId),
+    back: { label: "历史岗位", href: "/history.html" },
+    extraActions: [{ href: screeningHref(jobId), label: "进入筛选", primary: true }],
+  });
 
   try {
     const data = await apiRequest(`/api/jobs/${jobId}/overview`);
@@ -50,8 +60,8 @@ async function loadOverview() {
         ? `<span class="score ${scoreClass(i.job_fit_score)}">${i.job_fit_score}</span>`
         : "—";
       const reportBtn = i.status === "completed"
-        ? `<a href="/report.html?session_id=${i.session_id}" class="btn btn-primary btn-sm">查看报告</a>`
-        : `<a href="/interview.html?session_id=${i.session_id}&persona=${i.persona}" class="btn btn-secondary btn-sm">继续面试</a>`;
+        ? `<a href="/report.html?session_id=${i.session_id}&job_id=${jobId}" class="btn btn-primary btn-sm">查看报告</a>`
+        : `<a href="/interview.html?session_id=${i.session_id}&persona=${i.persona}&job_id=${jobId}" class="btn btn-secondary btn-sm">继续面试</a>`;
 
       return `
         <tr>

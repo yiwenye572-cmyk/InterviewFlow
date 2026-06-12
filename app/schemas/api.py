@@ -121,6 +121,7 @@ class VoiceTurnResponse(BaseModel):
 
 class InterviewStatusResponse(BaseModel):
     session_id: int
+    job_id: int
     status: str
     phase: str
     round_count: int
@@ -141,6 +142,7 @@ class InterviewMessagesResponse(BaseModel):
 
 class ReportResponse(BaseModel):
     session_id: int
+    job_id: int
     status: str
     report: dict | None = None
     evaluations_log: list[dict] | None = None
