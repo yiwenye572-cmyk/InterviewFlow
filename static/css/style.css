@@ -698,6 +698,51 @@ th {
   overflow-y: auto;
 }
 
+.report-generating {
+  padding: 0.5rem 0;
+}
+
+.report-generating h3 {
+  margin-top: 0;
+}
+
+.report-skeleton {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.report-skeleton-block {
+  height: 1rem;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.report-skeleton-block.short {
+  width: 55%;
+}
+
+.report-skeleton-block.medium {
+  width: 78%;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.report-failed {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
 .batch-item {
   display: flex;
   justify-content: space-between;

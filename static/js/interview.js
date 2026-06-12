@@ -190,6 +190,16 @@ function reportUrl() {
   return `/report.html?session_id=${sessionId}${q}`;
 }
 
+async function endInterviewAsync() {
+  await apiRequest(`/api/interview/${sessionId}/end`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ async: true }),
+  });
+  setNavSessionActive(false);
+  window.location.href = reportUrl();
+}
+
 function screeningBackHref() {
   return jobId ? `/screening.html?job_id=${jobId}` : "/";
 }
@@ -410,8 +420,7 @@ async function sendVoiceTurn(wavBlob) {
     if (closing) {
       appendSystem("面试即将结束...");
       appendSystem("正在生成评估报告...");
-      await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-      window.location.href = reportUrl();
+      await endInterviewAsync();
     }
   } catch (err) {
     showToast(err.message, true);
@@ -516,8 +525,7 @@ async function sendAnswer() {
 
     if (closing || result.pending_action === "stream_closing") {
       appendSystem("正在生成评估报告...");
-      await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-      window.location.href = reportUrl();
+      await endInterviewAsync();
       return;
     }
   } catch (err) {
@@ -538,9 +546,7 @@ userInput.addEventListener("keydown", (e) => {
 endBtn.addEventListener("click", async () => {
   endBtn.disabled = true;
   try {
-    await apiRequest(`/api/interview/${sessionId}/end`, { method: "POST" });
-    setNavSessionActive(false);
-    window.location.href = reportUrl();
+    await endInterviewAsync();
   } catch (err) {
     showToast(err.message, true);
     endBtn.disabled = false;

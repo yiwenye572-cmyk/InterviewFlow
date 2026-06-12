@@ -200,7 +200,7 @@ def main() -> None:
         eval_session,
         "我有4年后端经验，主导过 FastAPI 微服务拆分，接口 P99 从 800ms 降到 120ms。",
     )
-    r = requests.post(f"{BASE}/api/interview/{eval_session}/end", timeout=300)
+    r = requests.post(f"{BASE}/api/interview/{eval_session}/end", json={"async": False}, timeout=300)
     evals = r.json().get("evaluations_log") or []
     if not evals:
         fail("evaluations_log empty after round")
@@ -258,7 +258,7 @@ def main() -> None:
 
     print("[....] end + report...")
     t0 = time.time()
-    r = requests.post(f"{BASE}/api/interview/{session_id}/end", timeout=300)
+    r = requests.post(f"{BASE}/api/interview/{session_id}/end", json={"async": False}, timeout=300)
     if r.status_code != 200:
         fail(f"end {r.status_code}: {r.text[:500]}")
     data = r.json()

@@ -84,7 +84,7 @@ def main() -> None:
     run_round(session_id, "我有4年后端经验，熟悉 FastAPI，参与过招聘系统项目。")
 
     print("[....] end interview...")
-    r = requests.post(f"{BASE}/api/interview/{session_id}/end", timeout=300)
+    r = requests.post(f"{BASE}/api/interview/{session_id}/end", json={"async": False}, timeout=300)
     if r.status_code != 200:
         fail(f"end {r.status_code}")
 

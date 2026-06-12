@@ -155,7 +155,7 @@ def main() -> None:
     # 9. End & report
     print("[....] generating report...")
     t0 = time.time()
-    r = requests.post(f"{BASE}/api/interview/{session_id}/end", timeout=300)
+    r = requests.post(f"{BASE}/api/interview/{session_id}/end", json={"async": False}, timeout=300)
     if r.status_code != 200:
         fail("end interview", f"{r.status_code} {r.text[:500]}")
     report = r.json().get("report")

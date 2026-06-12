@@ -113,7 +113,7 @@ def main() -> None:
     ok(f"adversarial input comm={comm} (<=45)")
 
     print("[....] end + score timeline...")
-    r = requests.post(f"{BASE}/api/interview/{session_id}/end", timeout=300)
+    r = requests.post(f"{BASE}/api/interview/{session_id}/end", json={"async": False}, timeout=300)
     if r.status_code != 200:
         fail(f"end {r.status_code}")
     data = r.json()

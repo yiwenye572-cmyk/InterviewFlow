@@ -8,7 +8,7 @@ from app.services.llm import chat_completion, structured_completion
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
 
-def generate_interview_report(
+def generate_report_draft(
     job_text: str,
     structured: dict,
     messages: list[dict[str, str]],
@@ -22,9 +22,10 @@ def generate_interview_report(
     system = (PROMPT_DIR / "generate_report.txt").read_text(encoding="utf-8")
     if rubric_context:
         system += f"\n\nCompany rubric:\n{rubric_context[:3000]}"
-    transcript = _format_transcript(messages)
+    transcript = format_transcript(messages)
     weak_rounds = [
-        e for e in (evaluations_log or [])
+        e
+        for e in (evaluations_log or [])
         if e.get("answer_quality") == "weak"
         or e.get("resume_mismatch")
         or e.get("off_topic")
@@ -51,10 +52,10 @@ def generate_interview_report(
     )
     if live_assessment and not draft.live_snapshot:
         draft.live_snapshot = live_assessment
-    return _reflect_report(job_text, transcript, draft)
+    return draft
 
 
-def _reflect_report(
+def reflect_report(
     job_text: str, transcript: str, draft: InterviewReport
 ) -> InterviewReport:
     settings = get_settings()
@@ -82,7 +83,30 @@ def _reflect_report(
         return draft
 
 
-def _format_transcript(messages: list[dict[str, str]]) -> str:
+def generate_interview_report(
+    job_text: str,
+    structured: dict,
+    messages: list[dict[str, str]],
+    risk_notes: list[str],
+    *,
+    evaluations_log: list[dict] | None = None,
+    live_assessment: dict | None = None,
+    rubric_context: str = "",
+) -> InterviewReport:
+    transcript = format_transcript(messages)
+    draft = generate_report_draft(
+        job_text,
+        structured,
+        messages,
+        risk_notes,
+        evaluations_log=evaluations_log,
+        live_assessment=live_assessment,
+        rubric_context=rubric_context,
+    )
+    return reflect_report(job_text, transcript, draft)
+
+
+def format_transcript(messages: list[dict[str, str]]) -> str:
     lines = []
     for m in messages:
         role = "Interviewer" if m["role"] == "assistant" else "Candidate"
@@ -94,7 +118,7 @@ def compress_conversation_summary(
     messages: list[dict[str, str]], existing_summary: str = ""
 ) -> str:
     settings = get_settings()
-    recent = _format_transcript(messages[-8:])
+    recent = format_transcript(messages[-8:])
     prompt = [
         {
             "role": "system",

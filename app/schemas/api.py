@@ -185,6 +185,22 @@ class ReportResponse(BaseModel):
     candidate_feedback: dict | None = None
 
 
+class EndInterviewRequest(BaseModel):
+    async_mode: bool = Field(
+        default=True, validation_alias=AliasChoices("async", "async_mode")
+    )
+
+
+class ReportGenerationStatusResponse(BaseModel):
+    session_id: int
+    job_id: int
+    status: str
+    stage: str
+    progress: int
+    message: str
+    error: str | None = None
+
+
 class CandidateFeedbackRequest(BaseModel):
     rating: int = Field(ge=1, le=5)
     comment: str | None = Field(default=None, max_length=500)

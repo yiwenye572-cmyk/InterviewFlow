@@ -5,7 +5,7 @@ from queue import Empty, Queue
 from threading import Thread
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -13,17 +13,20 @@ from app.database import SessionLocal, get_db
 from app.schemas.api import (
     CandidateFeedbackRequest,
     CandidateFeedbackResponse,
+    EndInterviewRequest,
     InterviewMessageRequest,
     InterviewMessageResponse,
     InterviewMessagesResponse,
     InterviewStartRequest,
     InterviewStartResponse,
     InterviewStatusResponse,
+    ReportGenerationStatusResponse,
     ReportResponse,
     VoiceTurnResponse,
 )
 from app.models.entities import InterviewSession
 from app.services.interview.service import InterviewService
+from app.services.report_async import start_report_generation, status_from_session
 from app.services.interview.score_trace import build_score_timeline
 from app.services.voice.asr_client import transcribe_wav_async
 from app.services.voice.tts_client import synthesize_mp3
@@ -263,10 +266,51 @@ def get_interview_messages(session_id: int, db: Session = Depends(get_db)):
     return InterviewMessagesResponse(session_id=session_id, messages=messages)
 
 
+@router.get("/report/{session_id}/status", response_model=ReportGenerationStatusResponse)
+def get_report_status(session_id: int, db: Session = Depends(get_db)):
+    session = db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return ReportGenerationStatusResponse(**status_from_session(session))
+
+
 @router.post("/{session_id}/end")
-def end_interview(session_id: int, db: Session = Depends(get_db)):
+def end_interview(
+    session_id: int,
+    payload: EndInterviewRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    async_mode = payload.async_mode if payload else True
     service = InterviewService(db)
+    session = db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status == "completed" and session.report_json:
+        return _build_report_response(session)
+
     try:
+        if async_mode:
+            if session.status in ("generating_report", "failed"):
+                from app.services.report_async import is_running
+
+                if not is_running(session_id):
+                    session.status = "generating_report"
+                    session.pending_action = "report_queued"
+                    db.commit()
+                    db.refresh(session)
+                    start_report_generation(session_id)
+                status = status_from_session(session)
+                return JSONResponse(
+                    status_code=202,
+                    content=ReportGenerationStatusResponse(**status).model_dump(),
+                )
+            session = service.prepare_end_session(session_id)
+            status = status_from_session(session)
+            return JSONResponse(
+                status_code=202,
+                content=ReportGenerationStatusResponse(**status).model_dump(),
+            )
         session = service.end_session(session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -226,6 +226,33 @@ class InterviewService:
 
         yield ""
 
+    def prepare_end_session(self, session_id: int) -> InterviewSession:
+        session = self.db.get(InterviewSession, session_id)
+        if not session:
+            raise ValueError("Session not found")
+        if session.status == "completed" and session.report_json:
+            return session
+
+        job = self.db.get(Job, session.job_id)
+        resume = self.db.get(Resume, session.resume_id)
+        if not job or not resume:
+            raise ValueError("Session data missing")
+
+        if session.pending_action != "generate_report":
+            state = self._build_state(session, job, resume)
+            close_result = closing_node(state)
+            self._save_message(session.id, "assistant", close_result["assistant_reply"])
+
+        session.status = "generating_report"
+        session.pending_action = "report_queued"
+        self.db.commit()
+        self.db.refresh(session)
+
+        from app.services.report_async import start_report_generation
+
+        start_report_generation(session_id)
+        return session
+
     def end_session(self, session_id: int) -> InterviewSession:
         session = self.db.get(InterviewSession, session_id)
         if not session:

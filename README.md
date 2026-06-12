@@ -247,8 +247,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | GET | `/api/interview/{id}/live` | 实时评估快照 |
 | GET | `/api/interview/{id}/status` | 面试状态 |
 | GET | `/api/interview/{id}/messages` | 历史消息 |
-| POST | `/api/interview/{id}/end` | 结束并生成报告 |
+| POST | `/api/interview/{id}/end` | 结束面试；默认异步生成报告（202 + 轮询 status）；测试脚本传 `{"async": false}` 同步返回报告 |
 | POST | `/api/interview/{id}/feedback` | 候选人提交面试体验反馈（1–5 星 + 简述） |
+| GET | `/api/interview/report/{id}/status` | 报告生成进度（stage / progress / message） |
 | GET | `/api/interview/report/{id}` | 获取报告 |
 
 ## Prompt 设计思路
