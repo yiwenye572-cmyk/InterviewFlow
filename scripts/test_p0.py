@@ -127,6 +127,12 @@ def main() -> None:
         fail("score_timeline empty")
     ok(f"score_timeline rounds={len(timeline)} adjustments={len(timeline[0].get('score_adjustments', []))}")
 
+    first_adj = (timeline[0].get("score_adjustments") or [{}])[0]
+    reason = first_adj.get("reason") or ""
+    if reason and not any("\u4e00" <= ch <= "\u9fff" for ch in reason):
+        fail(f"score_timeline reason should contain Chinese: {reason!r}")
+    ok("score_timeline reason in Chinese")
+
     guard_hit = any(e.get("input_guard_blocked") or e.get("off_topic") for e in evals)
     if not guard_hit:
         fail("expected guard/off_topic in evaluations_log")

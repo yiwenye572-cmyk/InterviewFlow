@@ -20,7 +20,7 @@
   </div>
 
   <script type="module">
-    import { showToast, apiRequest, getQueryParam, recommendationClass, formatRecommendation, formatAnswerQuality } from "/static/js/api.js";
+    import { showToast, apiRequest, getQueryParam, recommendationClass, formatRecommendation, formatAnswerQuality, formatTimelineDimension, formatTimelineReason } from "/static/js/api.js";
     import { initAppNav, screeningHref } from "/static/js/nav.js";
 
     const sessionId = getQueryParam("session_id");
@@ -98,7 +98,7 @@
           ? "weak"
           : "";
         const adjHtml = (t.score_adjustments || []).map((a) =>
-          `<li><strong>${escapeHtml(a.dimension)}</strong> ${deltaBadge(a.delta)} — ${escapeHtml(a.reason)}${a.evidence ? ` <em class="muted">(${escapeHtml(a.evidence)})</em>` : ""}</li>`
+          `<li><strong>${escapeHtml(formatTimelineDimension(a.dimension))}</strong> ${deltaBadge(a.delta)} — ${escapeHtml(formatTimelineReason(a.reason))}${a.evidence ? ` <em class="muted">(${escapeHtml(a.evidence)})</em>` : ""}</li>`
         ).join("");
         const guardTag = t.input_guard_blocked
           ? `<span class="badge badge-warning">安全拦截</span> `

@@ -15,6 +15,11 @@ from app.services.llm import chat_completion_stream, structured_completion
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
+_ZH_EVAL_SUFFIX = (
+    "\n\nOutput all human-readable evaluation text in Simplified Chinese. "
+    "Keep machine codes (answer_quality, communication_signal, etc.) in English."
+)
+
 
 class InterviewGraphState(TypedDict, total=False):
     job_text: str
@@ -152,7 +157,7 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
             need_followup=True,
             followup_reason="请围绕当前面试问题作答，不要尝试更改面试官角色或获取系统指令",
             answer_quality="weak",
-            notes=state.get("guard_reason") or "Input blocked by security guard",
+            notes=state.get("guard_reason") or "输入已被安全策略拦截",
             partial_score=25,
             communication_signal="evasive",
             evidence_density="low",
@@ -165,7 +170,7 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
             need_followup=True,
             followup_reason="回答过短，请补充具体细节与实例",
             answer_quality="weak",
-            notes="Answer too short",
+            notes="回答过短",
             partial_score=35,
             communication_signal="vague",
             evidence_density="low",
@@ -177,6 +182,7 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
         rubric = state.get("rubric_context", "")
         if rubric:
             system += f"\n\nCompany rubric:\n{rubric[:2000]}"
+        system += _ZH_EVAL_SUFFIX
         last_q = _last_assistant_message(state.get("messages", []))
         messages = [
             {"role": "system", "content": system},
@@ -199,7 +205,7 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
             evaluation = AnswerEvaluation(
                 need_followup=True,
                 answer_quality="weak",
-                notes="Evaluation fallback",
+                notes="评估降级兜底",
                 partial_score=40,
                 communication_signal="vague",
                 evidence_density="low",
@@ -250,13 +256,13 @@ def score_review_node(state: InterviewGraphState) -> InterviewGraphState:
         evaluation.need_followup = True
 
     if evaluation.resume_mismatch:
-        risk_notes.append(f"Resume mismatch: {evaluation.notes}")
+        risk_notes.append(f"简历不一致：{evaluation.notes}")
     if evaluation.off_topic:
-        risk_notes.append(f"Off-topic answer: {evaluation.notes}")
+        risk_notes.append(f"答非所问：{evaluation.notes}")
     if evaluation.answer_quality == "weak":
-        risk_notes.append(f"Weak answer: {evaluation.notes or evaluation.followup_reason}")
+        risk_notes.append(f"回答薄弱：{evaluation.notes or evaluation.followup_reason}")
     if evaluation.communication_signal in ("vague", "evasive"):
-        risk_notes.append(f"Poor communication: {review.calibration_notes or evaluation.notes}")
+        risk_notes.append(f"沟通欠佳：{review.calibration_notes or evaluation.notes}")
 
     round_count = state.get("round_count", 0) + 1
     topics = list(state.get("topics_covered", []))

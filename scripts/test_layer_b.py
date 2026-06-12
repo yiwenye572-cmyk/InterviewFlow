@@ -128,6 +128,14 @@ def main() -> None:
         fail(f"vague answer comm too high: {comm1}")
     ok(f"vague answer comm={comm1} (<=45)")
 
+    live_after_vague = body.get("live_assessment") or {}
+    risks = live_after_vague.get("observed_risks") or []
+    if risks:
+        combined = "".join(risks)
+        if not any("\u4e00" <= ch <= "\u9fff" for ch in combined):
+            fail(f"observed_risks should contain Chinese: {risks!r}")
+        ok("observed_risks in Chinese")
+
     body = run_interview_round(session_id, "差不多就这样。")
     if body.get("pending_action") != "stream_question":
         fail(f"after 2 followups should force stream_question, got {body.get('pending_action')}")

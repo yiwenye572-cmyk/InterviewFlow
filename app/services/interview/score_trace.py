@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from app.schemas.resume_structured import AnswerEvaluation, LiveAssessment, ScoreReviewResult
+from app.schemas.resume_structured import AnswerEvaluation, ScoreReviewResult
 from app.services.interview.live_assessment import _apply_rule_caps, _weighted_scores
+
+_COMM_SIGNAL_ZH = {"vague": "含糊", "evasive": "回避"}
 
 
 def compute_live_scores(evaluations_log: list[dict]) -> tuple[int, int]:
@@ -32,7 +34,7 @@ def build_score_adjustments(
             {
                 "dimension": "partial_score",
                 "delta": partial_delta,
-                "reason": review.calibration_notes or "Calibrator adjusted partial score",
+                "reason": review.calibration_notes or "校准器调整了本轮得分",
                 "evidence": (review.evidence_quotes[0] if review.evidence_quotes else ""),
             }
         )
@@ -48,11 +50,12 @@ def build_score_adjustments(
         )
 
     if evaluation.communication_signal in ("vague", "evasive"):
+        signal_zh = _COMM_SIGNAL_ZH.get(evaluation.communication_signal, evaluation.communication_signal)
         adjustments.append(
             {
                 "dimension": "communication",
                 "delta": comm_after - comm_before,
-                "reason": f"Communication signal: {evaluation.communication_signal}",
+                "reason": f"沟通信号：{signal_zh}",
                 "evidence": (review.evidence_quotes[0] if review.evidence_quotes else ""),
             }
         )
@@ -62,7 +65,7 @@ def build_score_adjustments(
             {
                 "dimension": "job_fit",
                 "delta": job_after - job_before,
-                "reason": evaluation.followup_reason or evaluation.notes or "Weak answer quality",
+                "reason": evaluation.followup_reason or evaluation.notes or "回答质量薄弱",
                 "evidence": (review.evidence_quotes[0] if review.evidence_quotes else ""),
             }
         )
@@ -72,7 +75,7 @@ def build_score_adjustments(
             {
                 "dimension": "job_fit",
                 "delta": 0,
-                "reason": "Low evidence density — job fit capped by rule",
+                "reason": "证据不足，岗位匹配分按规则封顶",
                 "evidence": "",
             }
         )
@@ -82,7 +85,7 @@ def build_score_adjustments(
             {
                 "dimension": "job_fit",
                 "delta": job_after - job_before,
-                "reason": "Off-topic or adversarial input",
+                "reason": "答非所问或对抗性输入",
                 "evidence": evaluation.notes or "",
             }
         )
@@ -92,7 +95,7 @@ def build_score_adjustments(
             {
                 "dimension": "live_aggregate",
                 "delta": job_after - job_before,
-                "reason": "Weighted live score updated from recent rounds",
+                "reason": "近期轮次加权更新综合预估分",
                 "evidence": "",
             }
         )
@@ -128,7 +131,7 @@ def attach_score_trace(
             {
                 "dimension": "security",
                 "delta": 0,
-                "reason": eval_dict.get("guard_reason") or "Security guard blocked adversarial input",
+                "reason": eval_dict.get("guard_reason") or "安全策略拦截了对抗性输入",
                 "evidence": eval_dict.get("guard_threat_type", ""),
             },
         )

@@ -6,6 +6,11 @@ from app.services.llm import structured_completion
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
+_ZH_REVIEW_SUFFIX = (
+    "\n\nWrite calibration_notes in Simplified Chinese. "
+    "Keep adjusted_answer_quality and adjusted_communication_signal as English codes."
+)
+
 
 def review_score(
     *,
@@ -19,6 +24,7 @@ def review_score(
     system = (PROMPT_DIR / "score_review.txt").read_text(encoding="utf-8")
     if rubric_context:
         system += f"\n\nCompany rubric:\n{rubric_context[:3000]}"
+    system += _ZH_REVIEW_SUFFIX
     messages = [
         {"role": "system", "content": system},
         {
@@ -47,7 +53,7 @@ def review_score(
         return ScoreReviewResult(
             adjusted_partial_score=score,
             confidence=0.5,
-            calibration_notes="Rule-based fallback calibration",
+            calibration_notes="基于规则的校准兜底",
             adjusted_answer_quality=quality,
             adjusted_communication_signal=comm,
         )

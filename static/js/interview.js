@@ -1,4 +1,4 @@
-import { showToast, apiRequest, getQueryParam } from "/static/js/api.js";
+import { showToast, apiRequest, getQueryParam, formatLiveAssessmentText } from "/static/js/api.js";
 import { initAppNav, setNavSessionActive } from "/static/js/nav.js";
 import {
   startRecording,
@@ -117,11 +117,11 @@ function renderLiveAssessment(live) {
     </div>
     <div class="live-section">
       <h4>观察到的优势</h4>
-      <ul>${(live.observed_strengths || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
+      <ul>${(live.observed_strengths || []).map((s) => `<li>${escapeHtml(formatLiveAssessmentText(s))}</li>`).join("") || "<li>暂无</li>"}</ul>
     </div>
     <div class="live-section">
       <h4>潜在风险</h4>
-      <ul>${(live.observed_risks || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("") || "<li>暂无</li>"}</ul>
+      <ul>${(live.observed_risks || []).map((s) => `<li>${escapeHtml(formatLiveAssessmentText(s))}</li>`).join("") || "<li>暂无</li>"}</ul>
     </div>
     <p class="live-updated">置信度：${live.score_confidence != null ? (live.score_confidence * 100).toFixed(0) + "%" : "—"} · 更新：${live.last_updated ? new Date(live.last_updated).toLocaleString() : "—"}</p>`;
 }

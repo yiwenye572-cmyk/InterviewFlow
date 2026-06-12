@@ -65,7 +65,7 @@ def check_input(content: str) -> GuardResult:
         return GuardResult(
             blocked=True,
             threat_type="jailbreak",
-            reason="Abnormal repetitive input detected",
+            reason="检测到异常重复输入",
             hit_count=1,
         )
 
@@ -73,7 +73,7 @@ def check_input(content: str) -> GuardResult:
         return GuardResult(
             blocked=True,
             threat_type="jailbreak",
-            reason="Potential jailbreak or instruction override detected",
+            reason="检测到疑似越狱或指令覆盖",
             hit_count=len(jailbreak_hits),
         )
 
@@ -81,7 +81,7 @@ def check_input(content: str) -> GuardResult:
         return GuardResult(
             blocked=True,
             threat_type="prompt_leak",
-            reason="Attempt to extract system prompt or internal rules",
+            reason="试图获取系统提示或内部规则",
             hit_count=len(leak_hits),
         )
 
@@ -89,7 +89,7 @@ def check_input(content: str) -> GuardResult:
         return GuardResult(
             blocked=True,
             threat_type="off_topic_command",
-            reason="Off-topic command request detected",
+            reason="检测到离题指令请求",
             hit_count=len(off_topic_hits),
         )
 
@@ -98,7 +98,7 @@ def check_input(content: str) -> GuardResult:
         return GuardResult(
             blocked=True,
             threat_type="jailbreak",
-            reason="Multiple adversarial signals detected",
+            reason="检测到多项对抗性信号",
             hit_count=total,
         )
 
