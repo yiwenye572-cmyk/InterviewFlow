@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     volc_tts_speaker_tech: str = "zh_male_jingqiangkanye_moon_bigtts"
     volc_tts_speaker_hr: str = "zh_female_vv_uranus_bigtts"
 
+    llm_log_enabled: bool = True
+    llm_log_path: str = "data/llm_calls.jsonl"
+    llm_timeout_default: int = 30
+    llm_timeout_report: int = 60
+    llm_timeout_stream: int = 120
+    llm_max_system_chars: int = 8000
+    llm_max_user_chars: int = 12000
+    llm_structured_max_retries: int = 2
+    llm_trace_backend: str = "none"
+
 
 @lru_cache
 def get_settings() -> Settings:

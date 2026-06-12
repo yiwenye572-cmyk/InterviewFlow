@@ -199,7 +199,11 @@ def evaluate_answer_node(state: InterviewGraphState) -> InterviewGraphState:
         ]
         try:
             evaluation = structured_completion(
-                messages, AnswerEvaluation, model=settings.qwen_model_fast, retries=1
+                messages,
+                AnswerEvaluation,
+                model=settings.qwen_model_fast,
+                retries=1,
+                purpose="evaluate_answer",
             )
         except Exception:
             evaluation = AnswerEvaluation(

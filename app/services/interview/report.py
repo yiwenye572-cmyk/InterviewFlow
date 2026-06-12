@@ -54,7 +54,12 @@ def generate_report_draft(
         },
     ]
     draft = structured_completion(
-        messages_payload, InterviewReport, model=settings.qwen_model, retries=2
+        messages_payload,
+        InterviewReport,
+        model=settings.qwen_model,
+        retries=2,
+        purpose="report_draft",
+        timeout=float(settings.llm_timeout_report),
     )
     if live_assessment and not draft.live_snapshot:
         draft.live_snapshot = live_assessment
@@ -84,7 +89,12 @@ def reflect_report(
     ]
     try:
         return structured_completion(
-            messages, InterviewReport, model=settings.qwen_model_fast, retries=1
+            messages,
+            InterviewReport,
+            model=settings.qwen_model_fast,
+            retries=1,
+            purpose="report_reflection",
+            timeout=float(settings.llm_timeout_report),
         )
     except Exception:
         return draft

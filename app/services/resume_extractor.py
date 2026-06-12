@@ -29,7 +29,11 @@ def extract_jd_structured(raw_text: str) -> JDStructured:
         },
     ]
     return structured_completion(
-        messages, JDStructured, model=settings.qwen_model_fast, retries=2
+        messages,
+        JDStructured,
+        model=settings.qwen_model_fast,
+        retries=2,
+        purpose="jd_extract",
     )
 
 
@@ -44,7 +48,11 @@ def extract_resume_structured(raw_text: str) -> ResumeStructured:
         },
     ]
     return structured_completion(
-        messages, ResumeStructured, model=settings.qwen_model_fast, retries=2
+        messages,
+        ResumeStructured,
+        model=settings.qwen_model_fast,
+        retries=2,
+        purpose="resume_extract",
     )
 
 
@@ -75,5 +83,9 @@ def score_resume_match(
         },
     ]
     return structured_completion(
-        messages, MatchLLMResult, model=settings.qwen_model_fast, retries=2
+        messages,
+        MatchLLMResult,
+        model=settings.qwen_model_fast,
+        retries=2,
+        purpose="match_score",
     )

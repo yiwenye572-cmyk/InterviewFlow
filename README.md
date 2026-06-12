@@ -306,6 +306,22 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## LLM Harness
+
+所有 DashScope 文本调用统一经 `app/services/llm/` Harness 层（`chat_completion` / `chat_completion_stream` / `structured_completion` 对外签名不变）：
+
+- **Timeout**：普通 structured 30s、报告 60s、流式 120s（`.env` 可配）
+- **截断**：system / user 分层字符上限，写入日志 `truncated` 标记
+- **JSONL 日志**：`data/llm_calls.jsonl`（`call_id`、model、latency、tokens、cost_cny、retry_attempt）
+- **智能 Retry**：JSON 解析 / Pydantic 校验 / API / Timeout 分类处理；校验失败可升级 `qwen-turbo → qwen-plus`
+- **观测扩展**：`TraceAdapter` 接口预留 LangSmith / OpenTelemetry（默认 NoOp）
+
+```bash
+python scripts/test_llm_harness.py   # mock 单测，不耗 API Key
+```
+
+---
+
 ## Docker 部署
 
 本地验证与服务器部署均使用项目根目录的 `docker-compose.yml`。容器内 uvicorn 监听 `8000`，宿主机映射为 **`127.0.0.1:8001`**（避开 MAEC-SYS 占用的 8000）。详见 [`服务器环境.md`](服务器环境.md) 端口说明。
@@ -432,5 +448,6 @@ templates/             # 岗位 rubric 模板
 samples/               # Demo 样例
 screenshots/           # README 界面配图
 scripts/               # 测试与诊断脚本
-data/                  # SQLite + Chroma（运行时生成，已 gitignore）
+  test_llm_harness.py  # LLM Harness 单测（mock，无 API）
+data/                  # SQLite + Chroma + llm_calls.jsonl（运行时生成，已 gitignore）
 
