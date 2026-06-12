@@ -1,16 +1,20 @@
+import { pageUrl } from "./api.js";
+
 const STEP_DEFS = [
-  { num: 1, label: "上传", href: () => "/" },
+  { num: 1, label: "上传", href: () => pageUrl("/") },
   {
     num: 2,
     label: "筛选",
-    href: (ctx) => (ctx.jobId ? `/screening.html?job_id=${ctx.jobId}` : null),
+    href: (ctx) => (ctx.jobId ? pageUrl(`/screening.html?job_id=${ctx.jobId}`) : null),
   },
   {
     num: 3,
     label: "面试",
     href: (ctx) =>
       ctx.sessionId
-        ? `/interview.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`
+        ? pageUrl(
+            `/interview.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`,
+          )
         : null,
   },
   {
@@ -18,7 +22,9 @@ const STEP_DEFS = [
     label: "报告",
     href: (ctx) =>
       ctx.sessionId
-        ? `/report.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`
+        ? pageUrl(
+            `/report.html?session_id=${ctx.sessionId}${ctx.jobId ? `&job_id=${ctx.jobId}` : ""}`,
+          )
         : null,
   },
 ];
@@ -116,10 +122,10 @@ export function initAppNav(options = {}) {
 
   const globalBar = `
     <div class="app-nav-global">
-      <a href="/" class="app-nav-brand" data-nav-link="home">AI 招聘助手</a>
+      <a href="${pageUrl("/")}" class="app-nav-brand" data-nav-link="home">AI 招聘助手</a>
       <div class="app-nav-links">
-        <a href="/" data-nav-link="home">首页</a>
-        <a href="/history.html">完整历史</a>
+        <a href="${pageUrl("/")}" data-nav-link="home">首页</a>
+        <a href="${pageUrl("/history.html")}">完整历史</a>
       </div>
     </div>`;
 
@@ -164,5 +170,5 @@ export function initAppNav(options = {}) {
 }
 
 export function screeningHref(jobId) {
-  return jobId ? `/screening.html?job_id=${jobId}` : "/screening.html";
+  return jobId ? pageUrl(`/screening.html?job_id=${jobId}`) : pageUrl("/screening.html");
 }

@@ -1,5 +1,5 @@
-import { showToast, apiRequest } from "/static/js/api.js";
-import { initAppNav } from "/static/js/nav.js";
+import { showToast, apiRequest, pageUrl } from "./api.js";
+import { initAppNav } from "./nav.js";
 
 const STORAGE_KEY = "selectedJobId";
 
@@ -286,7 +286,7 @@ async function pollScreenBatch(batchId, total) {
     if (data.status === "completed") {
       await new Promise((r) => setTimeout(r, 400));
       modal.classList.add("hidden");
-      window.location.href = `/screening.html?job_id=${selectedJobId}`;
+      window.location.href = pageUrl(`/screening.html?job_id=${selectedJobId}`);
       return;
     }
     await new Promise((r) => setTimeout(r, 1000));
@@ -351,7 +351,7 @@ async function uploadAndScreen() {
 
 function enterScreening() {
   if (!selectedJobId) return;
-  window.location.href = `/screening.html?job_id=${selectedJobId}`;
+  window.location.href = pageUrl(`/screening.html?job_id=${selectedJobId}`);
 }
 
 document.getElementById("new-job-btn").addEventListener("click", () => {

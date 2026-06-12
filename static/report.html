@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <script src="./config.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI 招聘助手 - 评估报告</title>
-  <link rel="stylesheet" href="/static/css/style.css" />
-  <link rel="stylesheet" href="/static/css/app-ui.css" />
-  <link rel="stylesheet" href="/static/css/report.css" />
+  <link rel="stylesheet" href="./static/css/style.css" />
+  <link rel="stylesheet" href="./static/css/app-ui.css" />
+  <link rel="stylesheet" href="./static/css/report.css" />
 </head>
 <body class="app-page report-page">
   <div class="container">
@@ -22,8 +23,8 @@
   </div>
 
   <script type="module">
-    import { showToast, apiRequest, getQueryParam, recommendationClass, formatRecommendation, formatAnswerQuality, formatTimelineDimension, formatTimelineReason } from "/static/js/api.js";
-    import { initAppNav, screeningHref } from "/static/js/nav.js";
+    import { showToast, apiRequest, getQueryParam, recommendationClass, formatRecommendation, formatAnswerQuality, formatTimelineDimension, formatTimelineReason } from "./static/js/api.js";
+    import { initAppNav, screeningHref } from "./static/js/nav.js";
 
     const sessionId = getQueryParam("session_id");
     let jobId = getQueryParam("job_id");

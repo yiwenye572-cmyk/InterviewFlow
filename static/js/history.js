@@ -1,5 +1,5 @@
-import { apiRequest } from "/static/js/api.js";
-import { initAppNav } from "/static/js/nav.js";
+import { apiRequest, pageUrl } from "./api.js";
+import { initAppNav } from "./nav.js";
 
 const container = document.getElementById("jobs-container");
 
@@ -34,7 +34,7 @@ async function loadJobs() {
         <td>${j.resume_count}</td>
         <td>${j.interview_count} <small class="muted">(${j.completed_interview_count} 已完成)</small></td>
         <td>${formatDate(j.created_at)}</td>
-        <td><a href="/job.html?job_id=${j.id}" class="btn btn-secondary btn-sm">详情</a></td>
+        <td><a href="${pageUrl(`/job.html?job_id=${j.id}`)}" class="btn btn-secondary btn-sm">详情</a></td>
       </tr>`
     ).join("");
 
@@ -57,7 +57,7 @@ async function loadJobs() {
     document.querySelectorAll(".clickable-row").forEach((row) => {
       row.addEventListener("click", (e) => {
         if (e.target.closest("a")) return;
-        window.location.href = `/job.html?job_id=${row.dataset.jobId}`;
+        window.location.href = pageUrl(`/job.html?job_id=${row.dataset.jobId}`);
       });
     });
   } catch (err) {

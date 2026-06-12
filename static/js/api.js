@@ -13,8 +13,19 @@ function showToast(message, isError = false) {
   toast._timer = setTimeout(() => toast.classList.remove("show"), 3500);
 }
 
+function withBase(path) {
+  const base = window.__PUBLIC_BASE_PATH__ || "";
+  if (!path) return base || "/";
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${normalized}`;
+}
+
+function pageUrl(path) {
+  return withBase(path);
+}
+
 async function apiRequest(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(withBase(url), options);
   let data = null;
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -122,6 +133,8 @@ function formatTimelineReason(reason) {
 export {
   showToast,
   apiRequest,
+  withBase,
+  pageUrl,
   getQueryParam,
   scoreClass,
   recommendationClass,

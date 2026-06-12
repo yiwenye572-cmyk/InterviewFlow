@@ -1,10 +1,10 @@
-import { showToast, apiRequest, getQueryParam, formatLiveAssessmentText } from "/static/js/api.js";
-import { initAppNav, setNavSessionActive } from "/static/js/nav.js";
+import { showToast, apiRequest, getQueryParam, formatLiveAssessmentText, withBase, pageUrl } from "./api.js";
+import { initAppNav, setNavSessionActive } from "./nav.js";
 import {
   startRecording,
   stopRecording,
   isRecordingSupported,
-} from "/static/js/wav-recorder.js";
+} from "./wav-recorder.js";
 
 const sessionId = getQueryParam("session_id");
 const persona = getQueryParam("persona") || "tech_lead";
@@ -187,7 +187,7 @@ function renderAgendaPanel(status) {
 
 function reportUrl() {
   const q = jobId ? `&job_id=${jobId}` : "";
-  return `/report.html?session_id=${sessionId}${q}`;
+  return pageUrl(`/report.html?session_id=${sessionId}${q}`);
 }
 
 async function endInterviewAsync() {
@@ -201,7 +201,7 @@ async function endInterviewAsync() {
 }
 
 function screeningBackHref() {
-  return jobId ? `/screening.html?job_id=${jobId}` : "/";
+  return jobId ? pageUrl(`/screening.html?job_id=${jobId}`) : pageUrl("/");
 }
 
 function setupInterviewNav(status) {
@@ -298,7 +298,7 @@ async function consumeStream() {
   const bubble = appendMessage("assistant", "", true);
 
   return new Promise((resolve, reject) => {
-    const source = new EventSource(`/api/interview/${sessionId}/stream`);
+    const source = new EventSource(withBase(`/api/interview/${sessionId}/stream`));
 
     source.addEventListener("message", (event) => {
       let chunk = event.data;
@@ -385,7 +385,7 @@ async function sendVoiceTurn(wavBlob) {
   form.append("file", wavBlob, "utterance.wav");
 
   try {
-    const response = await fetch(`/api/interview/${sessionId}/voice/turn`, {
+    const response = await fetch(withBase(`/api/interview/${sessionId}/voice/turn`), {
       method: "POST",
       body: form,
     });

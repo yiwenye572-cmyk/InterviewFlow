@@ -1,5 +1,5 @@
-import { showToast, apiRequest, getQueryParam, scoreClass } from "/static/js/api.js";
-import { initAppNav } from "/static/js/nav.js";
+import { showToast, apiRequest, getQueryParam, scoreClass, pageUrl } from "./api.js";
+import { initAppNav } from "./nav.js";
 
 const jobId = getQueryParam("job_id");
 let pendingResumeId = null;
@@ -266,7 +266,9 @@ document.getElementById("confirm-interview").addEventListener("click", async () 
       }),
     });
     const mode = session.interview_mode || config.interview_mode;
-    window.location.href = `/interview.html?session_id=${session.session_id}&persona=${persona}&mode=${mode}&job_id=${jobId}`;
+    window.location.href = pageUrl(
+      `/interview.html?session_id=${session.session_id}&persona=${persona}&mode=${mode}&job_id=${jobId}`,
+    );
   } catch (err) {
     showToast(err.message, true);
     btn.disabled = false;

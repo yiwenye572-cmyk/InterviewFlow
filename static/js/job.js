@@ -1,5 +1,5 @@
-import { apiRequest, getQueryParam, recommendationClass, formatRecommendation, scoreClass } from "/static/js/api.js";
-import { initAppNav, screeningHref } from "/static/js/nav.js";
+import { apiRequest, getQueryParam, recommendationClass, formatRecommendation, scoreClass, pageUrl } from "./api.js";
+import { initAppNav, screeningHref } from "./nav.js";
 
 const jobId = getQueryParam("job_id");
 
@@ -26,7 +26,7 @@ async function loadOverview() {
     document.getElementById("jd-summary").textContent = "缺少 job_id";
     initAppNav({
       currentStep: null,
-      back: { label: "历史岗位", href: "/history.html" },
+      back: { label: "历史岗位", href: pageUrl("/history.html") },
     });
     return;
   }
@@ -34,7 +34,7 @@ async function loadOverview() {
   initAppNav({
     currentStep: null,
     jobId: Number(jobId),
-    back: { label: "历史岗位", href: "/history.html" },
+    back: { label: "历史岗位", href: pageUrl("/history.html") },
     extraActions: [{ href: screeningHref(jobId), label: "进入筛选", primary: true }],
   });
 
@@ -60,8 +60,8 @@ async function loadOverview() {
         ? `<span class="score ${scoreClass(i.job_fit_score)}">${i.job_fit_score}</span>`
         : "—";
       const reportBtn = i.status === "completed"
-        ? `<a href="/report.html?session_id=${i.session_id}&job_id=${jobId}" class="btn btn-primary btn-sm">查看报告</a>`
-        : `<a href="/interview.html?session_id=${i.session_id}&persona=${i.persona}&job_id=${jobId}" class="btn btn-secondary btn-sm">继续面试</a>`;
+        ? `<a href="${pageUrl(`/report.html?session_id=${i.session_id}&job_id=${jobId}`)}" class="btn btn-primary btn-sm">查看报告</a>`
+        : `<a href="${pageUrl(`/interview.html?session_id=${i.session_id}&persona=${i.persona}&job_id=${jobId}`)}" class="btn btn-secondary btn-sm">继续面试</a>`;
 
       return `
         <tr>

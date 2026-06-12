@@ -304,6 +304,59 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## Docker 部署
+
+本地验证与服务器部署均使用项目根目录的 `docker-compose.yml`。容器内 uvicorn 监听 `8000`，宿主机映射为 **`127.0.0.1:8001`**（避开 MAEC-SYS 占用的 8000）。详见 [`服务器环境.md`](服务器环境.md) 端口说明。
+
+### 本地验证
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入有效的 DASHSCOPE_API_KEY
+
+docker compose up -d --build
+curl http://127.0.0.1:8001/health
+# 期望: {"status":"ok"}
+```
+
+本地开发可不设置 `PUBLIC_BASE_PATH`，直接访问 `http://127.0.0.1:8001/`。
+
+### 服务器（nainong.tech）
+
+1. 同步代码到 `/var/www/airecruit`
+2. 配置 `.env`（`chmod 600`），必须设置：
+   - `DASHSCOPE_API_KEY`
+   - `PUBLIC_BASE_PATH=/airecruit`
+   - `DATABASE_URL=sqlite:////app/data/app.db`
+   - `CHROMA_PATH=/app/data/chroma`
+3. `mkdir -p data && docker compose up -d --build`
+4. 在 Nginx **80 与 443** 两个 `server {}` 块内追加（不修改现有 location）：
+
+```nginx
+    location /airecruit/ {
+        proxy_pass http://127.0.0.1:8001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+```
+
+5. `sudo nginx -t && sudo systemctl reload nginx`
+6. 验证：`curl -s https://nainong.tech/airecruit/health`
+
+**对外访问地址**：`https://nainong.tech/airecruit/`
+
+**数据备份**：`tar czf data-backup.tar.gz data/`
+
+> **注意**：筛选批次与报告生成有进程内状态，请保持 **单容器、单 worker**（Dockerfile 已配置 `--workers 1`），不要水平扩容多副本。
+
+---
+
 ## 测试与自检
 
 ```bash

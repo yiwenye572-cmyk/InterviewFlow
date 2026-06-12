@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     match_threshold: int = 60
     screen_concurrency: int = 3
     max_interview_rounds: int = 10
+    public_base_path: str = ""
     database_url: str = f"sqlite:///{BASE_DIR / 'data' / 'app.db'}"
     chroma_path: str = str(BASE_DIR / "data" / "chroma")
 
