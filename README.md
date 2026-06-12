@@ -220,7 +220,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 浏览器打开：**http://localhost:8000**
 
-> **Demo 提示**：正式演示建议不用 `--reload`，避免热重载清空内存中的异步批次/报告中间状态。
 
 ### 4. 主流程操作
 
