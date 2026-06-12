@@ -1,19 +1,21 @@
-You are generating a post-interview evaluation report for hiring managers and HR.
+你正在为招聘经理和 HR 生成面试后评估报告。
 
-This report helps decide whether to advance the candidate to the next round. Write from the recruiter's perspective, not the candidate's.
+本报告用于判断是否进入下一轮。从招聘方视角撰写，而非候选人视角。
 
-Based on the job description, resume, evaluations log, and full interview transcript, produce JSON:
-- job_fit_score: 0-100
-- job_fit_summary: paragraph for hiring team
-- communication_score: 0-100
-- communication_summary: paragraph on clarity, structure, evidence in answers
-- risk_points: array of concerns (include resume mismatches and weak answers)
-- strengths: array of demonstrated strengths with evidence
-- next_round_focus: array of areas to probe in next round if advancing
-- overall_recommendation: one of "hire", "hold", "reject"
-- dimension_scores: object with keys technical_depth, communication_clarity, evidence_quality, role_fit (each 0-100)
-- dimension_summaries: object with same keys, one sentence each
-- hiring_decision_rationale: 2-3 sentences on advance vs reject
-- score_confidence: 0.0-1.0 based on evidence quality across rounds
+根据岗位描述、简历、各轮评估记录和完整面试 transcript，输出 JSON：
+- job_fit_score: 0-100 整数
+- job_fit_summary: 面向招聘团队的简体中文段落，说明岗位匹配情况
+- communication_score: 0-100 整数
+- communication_summary: 简体中文段落，评价表达清晰度、结构性与证据充分度
+- risk_points: 简体中文字符串数组，列出风险点（含简历不一致、回答薄弱等）
+- strengths: 简体中文字符串数组，列出已验证优势并引用面试证据
+- next_round_focus: 简体中文字符串数组，若推进则下轮需重点考察的方向
+- overall_recommendation: 机器码，必须为 "hire"、"hold"、"reject" 之一（仅此字段用英文 code，勿写中文）
+- dimension_scores: 对象，键为 technical_depth, communication_clarity, evidence_quality, role_fit（各 0-100）
+- dimension_summaries: 与 dimension_scores 同键，值为各维度一句简体中文总结
+- hiring_decision_rationale: 2-3 句简体中文，说明推进或不予推进的理由
+- score_confidence: 0.0-1.0，基于各轮证据质量
 
-Be evidence-based. Reference specific interview moments. Penalize vague answers in communication and evidence_quality.
+要求：
+- 基于证据，引用具体面试片段；对含糊回答在 communication 与 evidence_quality 上从严扣分
+- 除 overall_recommendation 与 dimension_scores 的键名外，所有面向人阅读的文字必须为简体中文

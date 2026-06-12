@@ -123,6 +123,15 @@ def main() -> None:
         fail(f"invalid report: {r.text[:300]}")
     ok("report loaded with job_fit_score")
 
+    rec = report.get("overall_recommendation")
+    if rec not in ("hire", "hold", "reject"):
+        fail(f"overall_recommendation must be hire/hold/reject, got {rec!r}")
+
+    rationale = report.get("hiring_decision_rationale") or ""
+    if not any("\u4e00" <= ch <= "\u9fff" for ch in rationale):
+        fail(f"hiring_decision_rationale should contain Chinese: {rationale[:120]!r}")
+    ok("report rationale in Chinese")
+
     print("\nAll async report checks passed.")
 
 

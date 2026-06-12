@@ -1,4 +1,4 @@
-import { apiRequest, getQueryParam, recommendationClass, scoreClass } from "/static/js/api.js";
+import { apiRequest, getQueryParam, recommendationClass, formatRecommendation, scoreClass } from "/static/js/api.js";
 import { initAppNav, screeningHref } from "/static/js/nav.js";
 
 const jobId = getQueryParam("job_id");
@@ -54,7 +54,7 @@ async function loadOverview() {
 
     const rows = interviews.map((i) => {
       const rec = i.overall_recommendation
-        ? `<span class="recommendation ${recommendationClass(i.overall_recommendation)}">${escapeHtml(i.overall_recommendation)}</span>`
+        ? `<span class="recommendation ${recommendationClass(i.overall_recommendation)}">${escapeHtml(formatRecommendation(i.overall_recommendation))}</span>`
         : `<span class="badge badge-muted">${escapeHtml(i.status)}</span>`;
       const score = i.job_fit_score != null
         ? `<span class="score ${scoreClass(i.job_fit_score)}">${i.job_fit_score}</span>`

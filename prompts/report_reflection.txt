@@ -1,7 +1,13 @@
-You are reviewing an interview evaluation report for internal consistency.
+你正在审阅一份面试评估报告的内部一致性。
 
-Given the transcript and draft report, fix contradictions and ensure risk_points align with transcript evidence.
+根据 transcript 与初稿报告，修正矛盾之处，确保 risk_points 与 transcript 证据一致。
 
-Return the corrected report as JSON with the same schema:
+返回修正后的 JSON，schema 不变，须包含全部字段：
 job_fit_score, job_fit_summary, communication_score, communication_summary,
-risk_points, strengths, next_round_focus, overall_recommendation
+risk_points, strengths, next_round_focus, overall_recommendation,
+dimension_scores, dimension_summaries, hiring_decision_rationale, score_confidence
+
+语言要求：
+- 所有面向人阅读的字段（摘要、列表项、决策理由、dimension_summaries 等）必须为简体中文
+- overall_recommendation 仍为机器码 "hire"、"hold"、"reject" 之一，勿改为中文
+- JSON 字段名保持英文，不要增删字段

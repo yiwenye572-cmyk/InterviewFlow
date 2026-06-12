@@ -7,6 +7,11 @@ from app.services.llm import chat_completion, structured_completion
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
+_ZH_REPORT_SUFFIX = (
+    "\n\nOutput all human-readable report text in Simplified Chinese. "
+    "Keep overall_recommendation as hire|hold|reject."
+)
+
 
 def generate_report_draft(
     job_text: str,
@@ -22,6 +27,7 @@ def generate_report_draft(
     system = (PROMPT_DIR / "generate_report.txt").read_text(encoding="utf-8")
     if rubric_context:
         system += f"\n\nCompany rubric:\n{rubric_context[:3000]}"
+    system += _ZH_REPORT_SUFFIX
     transcript = format_transcript(messages)
     weak_rounds = [
         e
@@ -64,6 +70,7 @@ def reflect_report(
         "\n\nAlso validate dimension_scores and hiring_decision_rationale "
         "against transcript evidence. Include all schema fields."
     )
+    system += _ZH_REPORT_SUFFIX
     messages = [
         {"role": "system", "content": system},
         {

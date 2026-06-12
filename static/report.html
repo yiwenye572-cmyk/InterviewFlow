@@ -20,7 +20,7 @@
   </div>
 
   <script type="module">
-    import { showToast, apiRequest, getQueryParam, recommendationClass } from "/static/js/api.js";
+    import { showToast, apiRequest, getQueryParam, recommendationClass, formatRecommendation, formatAnswerQuality } from "/static/js/api.js";
     import { initAppNav, screeningHref } from "/static/js/nav.js";
 
     const sessionId = getQueryParam("session_id");
@@ -289,7 +289,7 @@
                   ? "weak"
                   : "";
               return `<div class="eval-log-item ${cls}">
-                <strong>第 ${e.round || "?"} 轮</strong> · ${escapeHtml(e.answer_quality || "—")}
+                <strong>第 ${e.round || "?"} 轮</strong> · ${escapeHtml(formatAnswerQuality(e.answer_quality) || "—")}
                 ${e.competency_signal ? ` · ${escapeHtml(e.competency_signal)}` : ""}
                 ${e.confidence != null ? ` · 置信 ${(e.confidence * 100).toFixed(0)}%` : ""}
                 <p>${escapeHtml(e.calibration_notes || e.notes || e.followup_reason || "")}</p>
@@ -300,7 +300,7 @@
         container.innerHTML = `
           <div class="report-section">
             <h3>招聘决策</h3>
-            <p class="recommendation ${recommendationClass(rec)}">${escapeHtml(rec)}</p>
+            <p class="recommendation ${recommendationClass(rec)}">${escapeHtml(formatRecommendation(rec))}</p>
             <p>${escapeHtml(reportData.hiring_decision_rationale || "")}</p>
           </div>
           <div class="report-section">

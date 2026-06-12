@@ -44,4 +44,33 @@ function recommendationClass(rec) {
   return map[rec] || "hold";
 }
 
-export { showToast, apiRequest, getQueryParam, scoreClass, recommendationClass };
+const recommendationLabel = {
+  hire: "推荐录用",
+  hold: "待定",
+  reject: "不推荐",
+};
+
+function formatRecommendation(rec) {
+  return recommendationLabel[rec] || rec;
+}
+
+const answerQualityLabel = {
+  strong: "优秀",
+  adequate: "合格",
+  weak: "薄弱",
+};
+
+function formatAnswerQuality(quality) {
+  if (!quality) return "";
+  return answerQualityLabel[quality] || quality;
+}
+
+export {
+  showToast,
+  apiRequest,
+  getQueryParam,
+  scoreClass,
+  recommendationClass,
+  formatRecommendation,
+  formatAnswerQuality,
+};
