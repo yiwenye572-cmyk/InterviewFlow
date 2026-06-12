@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI 招聘助手 - 筛选结果</title>
   <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/app-ui.css" />
 </head>
-<body>
+<body class="app-page screening-page">
   <div class="container">
     <div id="app-nav"></div>
-    <header>
+    <header class="page-header">
       <h1>简历筛选结果</h1>
       <p>基于语义匹配与 LLM 评估的综合打分</p>
     </header>
@@ -17,14 +18,14 @@
     <div class="card">
       <h2>候选人列表</h2>
       <div id="results-container">
-        <p style="color: var(--muted)">加载中...</p>
+        <p class="text-empty">加载中...</p>
       </div>
     </div>
   </div>
 
   <!-- Persona modal -->
-  <div id="persona-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center;">
-    <div class="card" style="max-width:480px; width:90%; margin:0; max-height:90vh; overflow-y:auto;">
+  <div id="persona-modal" class="modal-overlay hidden">
+    <div class="card modal-card modal-card-wide">
       <h2>配置模拟面试</h2>
       <p class="muted small">招聘方视角 · 支持自适应与标准化两种模式</p>
       <div class="field">

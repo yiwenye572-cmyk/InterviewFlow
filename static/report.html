@@ -5,17 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI 招聘助手 - 评估报告</title>
   <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/app-ui.css" />
+  <link rel="stylesheet" href="/static/css/report.css" />
 </head>
-<body>
+<body class="app-page report-page">
   <div class="container">
     <div id="app-nav"></div>
-    <header>
+    <header class="page-header report-page-header">
       <h1>候选人评估报告</h1>
       <p>招聘方决策视角 · 过程评估 vs 终局结论 · 多维度打分</p>
     </header>
 
     <div id="report-container" class="card report-grid">
-      <p style="color: var(--muted)">加载报告中...</p>
+      <p class="report-loading">加载报告中...</p>
     </div>
   </div>
 
@@ -70,9 +72,24 @@
       return items.map((i) => `<li>${escapeHtml(i)}</li>`).join("");
     }
 
+    function scoreTierClass(score) {
+      const val = Number(score);
+      if (Number.isNaN(val)) return "";
+      if (val < 40) return "score-critical";
+      if (val < 60) return "score-low";
+      return "";
+    }
+
     function dimensionBar(label, score) {
       const val = Number(score) || 0;
-      return `<div class="dim-row"><span class="dim-label">${escapeHtml(label)}</span><div class="dim-track"><div class="dim-fill" style="width:${val}%"></div></div><span class="dim-val">${val}</span></div>`;
+      const tier = scoreTierClass(val);
+      return `<div class="dim-card ${tier}">
+        <div class="dim-card-head">
+          <span class="dim-card-label">${escapeHtml(label)}</span>
+          <span class="dim-card-val ${tier}">${val}</span>
+        </div>
+        <div class="dim-track"><div class="dim-fill ${tier}" style="width:${val}%"></div></div>
+      </div>`;
     }
 
     const dimLabels = {
@@ -104,9 +121,11 @@
           ? `<span class="badge badge-warning">安全拦截</span> `
           : "";
         return `<div class="timeline-item ${cls}">
-          ${guardTag}<strong>第 ${t.round || "?"} 轮</strong>
-          · 岗位分 ${t.live_job_fit_before ?? "—"} → ${t.live_job_fit_after ?? "—"} ${deltaBadge(t.job_fit_delta)}
-          · 沟通 ${t.live_comm_before ?? "—"} → ${t.live_comm_after ?? "—"} ${deltaBadge(t.comm_delta)}
+          <div class="timeline-round">${guardTag}<strong>第 ${t.round || "?"} 轮</strong></div>
+          <div class="timeline-metrics">
+            <span class="timeline-metric">岗位分 ${t.live_job_fit_before ?? "—"} → ${t.live_job_fit_after ?? "—"} ${deltaBadge(t.job_fit_delta)}</span>
+            <span class="timeline-metric">沟通 ${t.live_comm_before ?? "—"} → ${t.live_comm_after ?? "—"} ${deltaBadge(t.comm_delta)}</span>
+          </div>
           ${adjHtml ? `<ul class="adjustment-list">${adjHtml}</ul>` : ""}
         </div>`;
       }).join("");
@@ -297,46 +316,71 @@
             }).join("")
           : "<p style='color:var(--muted)'>无过程评估记录</p>";
 
+        const confidencePct = reportData.score_confidence != null
+          ? (reportData.score_confidence * 100).toFixed(0) + "%"
+          : "—";
+        const liveScore = (val) => {
+          const tier = scoreTierClass(val);
+          const display = val ?? "—";
+          return `<span class="value ${tier}">${display}</span>`;
+        };
+
         container.innerHTML = `
-          <div class="report-section">
-            <h3>招聘决策</h3>
-            <p class="recommendation ${recommendationClass(rec)}">${escapeHtml(formatRecommendation(rec))}</p>
-            <p>${escapeHtml(reportData.hiring_decision_rationale || "")}</p>
-          </div>
-          <div class="report-section">
-            <h3>过程评估 vs 终局结论</h3>
-            <div class="live-scores">
-              <div class="live-score-item"><span class="label">过程·岗位匹配</span><span class="value">${live.provisional_job_fit ?? "—"}</span></div>
-              <div class="live-score-item"><span class="label">终局·岗位匹配</span><span class="value">${reportData.job_fit_score}</span></div>
-              <div class="live-score-item"><span class="label">过程·沟通</span><span class="value">${live.provisional_communication ?? "—"}</span></div>
-              <div class="live-score-item"><span class="label">终局·沟通</span><span class="value">${reportData.communication_score}</span></div>
+          <div class="report-section report-hero">
+            <div class="report-hero-content">
+              <h3>招聘决策</h3>
+              <div class="report-decision-block">
+                <p class="recommendation ${recommendationClass(rec)}">${escapeHtml(formatRecommendation(rec))}</p>
+                <p class="report-rationale">${escapeHtml(reportData.hiring_decision_rationale || "")}</p>
+              </div>
             </div>
-            <p class="live-updated">终局置信度：${reportData.score_confidence != null ? (reportData.score_confidence * 100).toFixed(0) + "%" : "—"}</p>
           </div>
-          <div class="report-section">
+          <div class="report-metrics-band">
+            <div class="report-section">
+              <h3>过程评估 vs 终局结论</h3>
+              <div class="score-compare-grid">
+                <div class="score-compare-row">
+                  <div class="live-score-item"><span class="label">过程·岗位匹配</span>${liveScore(live.provisional_job_fit)}</div>
+                  <span class="score-compare-arrow" aria-hidden="true"></span>
+                  <div class="live-score-item live-score-final"><span class="label">终局·岗位匹配</span>${liveScore(reportData.job_fit_score)}</div>
+                </div>
+                <div class="score-compare-row">
+                  <div class="live-score-item"><span class="label">过程·沟通</span>${liveScore(live.provisional_communication)}</div>
+                  <span class="score-compare-arrow" aria-hidden="true"></span>
+                  <div class="live-score-item live-score-final"><span class="label">终局·沟通</span>${liveScore(reportData.communication_score)}</div>
+                </div>
+              </div>
+              <p class="live-updated">终局置信度：${confidencePct}</p>
+            </div>
+            <div class="report-section">
+              <h3>多维度评估</h3>
+              <div class="dim-cards-grid">${dimHtml || "<p>暂无维度分</p>"}</div>
+            </div>
+          </div>
+          <div class="report-section report-timeline-section">
             <h3>评分时间线（可审计）</h3>
             <p class="muted small">每轮 Live 岗位/沟通分变化及 Calibrator 加减依据</p>
             ${renderScoreTimeline(timeline)}
           </div>
-          <div class="report-section">
-            <h3>多维度评估</h3>
-            <div class="dim-bars">${dimHtml || "<p>暂无维度分</p>"}</div>
+          <div class="report-dual-prose">
+            <div class="report-section report-prose">
+              <h3>岗位匹配 (${reportData.job_fit_score}/100)</h3>
+              <p>${escapeHtml(reportData.job_fit_summary)}</p>
+            </div>
+            <div class="report-section report-prose">
+              <h3>沟通能力 (${reportData.communication_score}/100)</h3>
+              <p>${escapeHtml(reportData.communication_summary)}</p>
+            </div>
           </div>
-          <div class="report-section">
-            <h3>岗位匹配 (${reportData.job_fit_score}/100)</h3>
-            <p>${escapeHtml(reportData.job_fit_summary)}</p>
-          </div>
-          <div class="report-section">
-            <h3>沟通能力 (${reportData.communication_score}/100)</h3>
-            <p>${escapeHtml(reportData.communication_summary)}</p>
-          </div>
-          <div class="report-section">
-            <h3>优势</h3>
-            <ul>${listItems(reportData.strengths)}</ul>
-          </div>
-          <div class="report-section">
-            <h3>潜在风险</h3>
-            <ul>${listItems(reportData.risk_points)}</ul>
+          <div class="report-two-col">
+            <div class="report-section">
+              <h3>优势</h3>
+              <ul>${listItems(reportData.strengths)}</ul>
+            </div>
+            <div class="report-section">
+              <h3>潜在风险</h3>
+              <ul>${listItems(reportData.risk_points)}</ul>
+            </div>
           </div>
           <div class="report-section">
             <h3>下轮考察建议（如推进）</h3>

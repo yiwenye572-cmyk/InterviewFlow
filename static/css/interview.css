@@ -1,0 +1,206 @@
+/* AI 模拟面试 — 宽屏布局，减少两侧留白 */
+
+body.interview-page .container {
+  max-width: min(100%, 1440px);
+  width: 100%;
+  padding: 0.875rem clamp(0.75rem, 2vw, 1.5rem) 1.25rem;
+}
+
+body.interview-page .page-header {
+  margin-bottom: 0.875rem;
+  padding-bottom: 0.75rem;
+}
+
+body.interview-page .page-header h1 {
+  font-size: 1.375rem;
+}
+
+body.interview-page .page-header p {
+  font-size: 0.8125rem;
+}
+
+body.interview-page .app-nav-global {
+  margin-bottom: 0.75rem;
+}
+
+body.interview-page .steps {
+  margin-bottom: 0.75rem;
+}
+
+body.interview-page .page-nav-actions {
+  margin-bottom: 0.75rem;
+}
+
+/* 主网格：聊天区弹性扩展，侧栏固定合理宽度 */
+body.interview-page .interview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+body.interview-page .interview-grid > .card {
+  margin-bottom: 0;
+}
+
+/* 聊天主面板 — 占满可用高度 */
+body.interview-page .chat-layout {
+  height: calc(100vh - 10.5rem);
+  min-height: 460px;
+}
+
+body.interview-page .chat-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  flex-wrap: unset;
+  margin-bottom: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+body.interview-page .chat-meta span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.interview-page .chat-window {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0.75rem;
+  padding: 1rem 1.125rem;
+  background: var(--bg);
+}
+
+body.interview-page .message {
+  max-width: 72%;
+}
+
+body.interview-page .chat-input-row textarea {
+  min-height: 52px;
+}
+
+body.interview-page .chat-layout > .actions {
+  margin-top: 0.625rem;
+}
+
+/* 右侧评估 / 议程侧栏 */
+body.interview-page .live-sidebar {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0.75rem;
+  max-height: calc(100vh - 10.5rem);
+  min-height: 460px;
+  overflow: hidden;
+}
+
+body.interview-page .live-header {
+  flex-shrink: 0;
+  margin-bottom: 0.625rem;
+}
+
+body.interview-page .sidebar-tabs {
+  flex: 1;
+  min-width: 0;
+}
+
+body.interview-page .sidebar-tab {
+  font-size: 0.8125rem;
+  padding: 0.3rem 0.75rem;
+}
+
+body.interview-page .live-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+body.interview-page .live-content::-webkit-scrollbar,
+body.interview-page .chat-window::-webkit-scrollbar {
+  width: 6px;
+}
+
+body.interview-page .live-content::-webkit-scrollbar-thumb,
+body.interview-page .chat-window::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+body.interview-page .agenda-section {
+  margin-bottom: 1.125rem;
+}
+
+body.interview-page .agenda-section h4 {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+body.interview-page .agenda-question-card {
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+body.interview-page .agenda-list,
+body.interview-page .agenda-comp-list {
+  font-size: 0.8125rem;
+}
+
+/* 超宽屏进一步放宽 */
+@media (min-width: 1600px) {
+  body.interview-page .container {
+    max-width: min(100%, 1560px);
+  }
+
+  body.interview-page .interview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  body.interview-page .chat-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  body.interview-page .interview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.interview-page .chat-layout {
+    height: calc(100vh - 12rem);
+    min-height: 400px;
+  }
+
+  body.interview-page .live-sidebar {
+    position: static;
+    max-height: none;
+    min-height: auto;
+  }
+
+  body.interview-page .live-content {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 640px) {
+  body.interview-page .container {
+    padding: 0.75rem 0.625rem 1rem;
+  }
+
+  body.interview-page .chat-meta {
+    grid-template-columns: 1fr;
+  }
+
+  body.interview-page .message {
+    max-width: 88%;
+  }
+}

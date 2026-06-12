@@ -39,18 +39,20 @@ async function loadJobs() {
     ).join("");
 
     container.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>岗位</th>
-            <th>简历数</th>
-            <th>面试数</th>
-            <th>创建时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>岗位</th>
+              <th>简历数</th>
+              <th>面试数</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
 
     document.querySelectorAll(".clickable-row").forEach((row) => {
       row.addEventListener("click", (e) => {

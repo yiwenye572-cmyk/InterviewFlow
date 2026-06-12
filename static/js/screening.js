@@ -6,8 +6,6 @@ let pendingResumeId = null;
 
 const modal = document.getElementById("persona-modal");
 const questionDrawer = document.getElementById("question-drawer");
-modal.style.display = "none";
-questionDrawer.style.display = "none";
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -128,18 +126,20 @@ async function loadResults() {
       .join("");
 
     container.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>候选人</th>
-            <th>综合分</th>
-            <th>语义/LLM</th>
-            <th>评估</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>候选人</th>
+              <th>综合分</th>
+              <th>语义/LLM</th>
+              <th>评估</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
 
     document.querySelectorAll(".toggle-detail").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -161,7 +161,7 @@ async function loadResults() {
         document.getElementById("warmth-val").textContent = "3";
         document.getElementById("followup-max").value = "2";
         document.getElementById("enable-encouragement").checked = false;
-        modal.style.display = "flex";
+        modal.classList.remove("hidden");
       });
     });
 
@@ -176,7 +176,7 @@ async function loadResults() {
 async function loadQuestions(resumeId) {
   const body = document.getElementById("question-drawer-body");
   body.innerHTML = "<p>生成中，请稍候...</p>";
-  questionDrawer.style.display = "flex";
+  questionDrawer.classList.add("is-open");
 
   try {
     const data = await apiRequest(`/api/screen/${jobId}/questions/${resumeId}`);
@@ -203,7 +203,7 @@ async function loadQuestions(resumeId) {
 }
 
 document.getElementById("close-questions")?.addEventListener("click", () => {
-  questionDrawer.style.display = "none";
+  questionDrawer.classList.remove("is-open");
 });
 
 initAppNav({
@@ -216,7 +216,7 @@ initAppNav({
 });
 
 document.getElementById("cancel-interview")?.addEventListener("click", () => {
-  modal.style.display = "none";
+  modal.classList.add("hidden");
   pendingResumeId = null;
 });
 

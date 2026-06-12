@@ -1,17 +1,19 @@
 /* AI Recruitment Assistant - shared styles */
 :root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --bg: #f8fafc;
+  --primary: #4080ff;
+  --primary-dark: #3060d0;
+  --accent: #36cfc9;
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
-  --radius: 12px;
+  --text: #1d2129;
+  --text-body: #4e5969;
+  --muted: #86909c;
+  --border: #e5e6eb;
+  --success: #00b42a;
+  --warning: #ff7d00;
+  --danger: #f53f3f;
+  --shadow: 0 2px 8px rgb(29 33 41 / 0.06), 0 1px 2px rgb(29 33 41 / 0.04);
+  --radius: 8px;
 }
 
 * {
@@ -21,9 +23,9 @@
 }
 
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-body);
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -113,6 +115,7 @@ textarea {
 .btn-primary {
   background: var(--primary);
   color: #fff;
+  border: 1px solid transparent;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -120,8 +123,9 @@ textarea {
 }
 
 .btn-secondary {
-  background: #e2e8f0;
-  color: var(--text);
+  background: var(--surface);
+  color: var(--text-body);
+  border: 1px solid var(--border);
 }
 
 .btn-danger {
@@ -250,7 +254,7 @@ th {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
-  background: #f1f5f9;
+  background: var(--bg);
   margin-bottom: 1rem;
 }
 
@@ -517,14 +521,10 @@ th {
   }
 }
 
-/* Interview layout with live sidebar */
-.interview-page .container {
-  max-width: 1200px;
-}
-
+/* Interview layout with live sidebar — width rules in interview.css */
 .interview-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 1rem;
   align-items: start;
 }
@@ -677,8 +677,8 @@ th {
 }
 
 .progress-track {
-  height: 8px;
-  background: #e2e8f0;
+  height: 6px;
+  background: var(--border);
   border-radius: 999px;
   overflow: hidden;
   margin: 1rem 0;
@@ -686,7 +686,7 @@ th {
 
 .progress-fill {
   height: 100%;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--primary), var(--accent));
   transition: width 0.3s ease;
 }
 
@@ -886,7 +886,7 @@ th {
 }
 .dim-track {
   height: 6px;
-  background: #e2e8f0;
+  background: var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -1066,11 +1066,11 @@ th {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
-.delta.positive { background: #dcfce7; color: var(--success); }
-.delta.negative { background: #fee2e2; color: var(--danger); }
-.delta.neutral { background: #e2e8f0; color: var(--muted); }
+.delta.positive { background: rgb(0 180 42 / 0.12); color: var(--success); }
+.delta.negative { background: rgb(245 63 63 / 0.12); color: var(--danger); }
+.delta.neutral { background: var(--border); color: var(--muted); }
 .clickable-row { cursor: pointer; }
-.clickable-row:hover { background: #f1f5f9; }
+.clickable-row:hover { background: rgb(64 128 255 / 0.06); }
 
 .rating-buttons { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.35rem 0; }
 .feedback-section { border-top: 1px solid var(--border); padding-top: 1rem; }

@@ -78,21 +78,23 @@ async function loadOverview() {
 
     container.innerHTML = `
       <h2>面试记录 (${interviews.length})</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>候选人</th>
-            <th>人设</th>
-            <th>模式</th>
-            <th>匹配分</th>
-            <th>决策</th>
-            <th>简述</th>
-            <th>时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>候选人</th>
+              <th>人设</th>
+              <th>模式</th>
+              <th>匹配分</th>
+              <th>决策</th>
+              <th>简述</th>
+              <th>时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
   } catch (err) {
     document.getElementById("jd-summary").textContent = err.message;
   }

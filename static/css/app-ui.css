@@ -1,0 +1,449 @@
+/* ═══════════════════════════════════════════════════════════
+   AIRecruit — 全局 UI（清爽科技商务风）
+   配色严格沿用设计令牌，仅布局/排版/视觉
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --primary-light: rgb(64 128 255 / 0.08);
+  --primary-ring: rgb(64 128 255 / 0.22);
+  --success-bg: rgb(0 180 42 / 0.1);
+  --warning-bg: rgb(255 125 0 / 0.1);
+  --danger-bg: rgb(245 63 63 / 0.1);
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+}
+
+/* ── 页面标题区 ── */
+.page-header {
+  text-align: left;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-bottom: 0.35rem;
+}
+
+.page-header p {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ── 导航与步骤条 ── */
+.app-nav-global {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow);
+}
+
+.app-nav-brand {
+  font-size: 1rem;
+  transition: color 0.2s ease;
+}
+
+.app-nav-links a {
+  transition: color 0.2s ease;
+}
+
+.app-nav-links a:focus-visible,
+.app-nav-brand:focus-visible {
+  outline: 2px solid var(--primary-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.steps {
+  gap: 0.375rem;
+  margin-bottom: var(--space-md);
+}
+
+.step {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.step.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary-ring);
+}
+
+.step.clickable:hover {
+  background: var(--primary-light);
+  border-color: rgb(64 128 255 / 0.35);
+  color: var(--primary);
+}
+
+.page-nav-actions {
+  margin-bottom: var(--space-md);
+}
+
+.page-nav-actions .btn {
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+/* ── 卡片与区块 ── */
+.card {
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  transition: box-shadow 0.2s ease;
+}
+
+.card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--space-md);
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card h2::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.card > p.muted:first-of-type,
+.card > .muted.small:first-of-type {
+  margin-bottom: var(--space-md);
+}
+
+/* ── 表单控件 ── */
+label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+input[type="file"],
+select,
+textarea,
+input[type="text"],
+input[type="range"] {
+  border-radius: var(--radius);
+  color: var(--text-body);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="file"]:focus,
+select:focus,
+textarea:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+input[type="range"] {
+  accent-color: var(--primary);
+}
+
+.field {
+  margin-bottom: var(--space-md);
+}
+
+/* ── 按钮 ── */
+.btn {
+  border-radius: var(--radius);
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary-ring);
+  outline-offset: 2px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgb(64 128 255 / 0.35);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text-body);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: rgb(64 128 255 / 0.35);
+  color: var(--primary);
+}
+
+/* ── 徽章与分数 ── */
+.badge-success {
+  background: var(--success-bg);
+}
+
+.badge-warning {
+  background: var(--warning-bg);
+}
+
+.badge-muted {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+/* ── 数据表格 ── */
+.table-wrap {
+  overflow-x: auto;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+}
+
+table {
+  font-size: 0.875rem;
+}
+
+th {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody tr {
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: var(--primary-light);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: var(--primary-light);
+}
+
+.detail-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.skill-tag {
+  background: var(--primary-light);
+  border: 1px solid rgb(64 128 255 / 0.15);
+}
+
+/* ── 首页布局 ── */
+.home-layout {
+  gap: var(--space-md);
+}
+
+.job-sidebar {
+  border-radius: var(--radius);
+}
+
+.job-list-row.active .job-list-item {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.job-list-item {
+  border-radius: var(--radius);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.job-list-item:hover {
+  background: var(--primary-light);
+}
+
+.job-delete-btn {
+  border-radius: var(--radius);
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.job-delete-btn:hover {
+  background: var(--danger-bg);
+}
+
+.resume-select-item {
+  border-radius: var(--radius);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.resume-select-item:hover {
+  background: var(--primary-light);
+}
+
+.resume-select-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-sm);
+  background: var(--bg);
+}
+
+/* ── 筛选页 ── */
+.screening-page .card > h2 + #results-container {
+  margin-top: 0;
+}
+
+.screening-page #results-container .table-wrap,
+.screening-page #results-container > table {
+  margin-top: 0;
+}
+
+/* ── 面试页 ── */
+.interview-page .page-header {
+  margin-bottom: var(--space-md);
+}
+
+.chat-window {
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.message.assistant {
+  border-radius: var(--radius) var(--radius) var(--radius) 4px;
+}
+
+.message.user {
+  border-radius: var(--radius) var(--radius) 4px var(--radius);
+}
+
+.chat-meta {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  gap: 0.75rem 1.25rem;
+}
+
+.chat-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sidebar-tab {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-tab:hover:not(.active) {
+  border-color: rgb(64 128 255 / 0.35);
+  color: var(--primary);
+}
+
+.live-sidebar {
+  border-radius: var(--radius);
+}
+
+.agenda-question-card {
+  background: var(--bg);
+  transition: border-color 0.2s ease;
+}
+
+.agenda-question-card:hover {
+  border-color: rgb(64 128 255 / 0.35);
+}
+
+.comp-covered {
+  background: var(--success-bg);
+}
+
+.comp-at_risk {
+  background: var(--warning-bg);
+}
+
+.comp-uncovered {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+/* ── 弹层 / 抽屉 ── */
+.modal-overlay:not(.hidden) {
+  display: flex;
+}
+
+.modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-card-wide {
+  width: min(520px, 100%);
+}
+
+.drawer-overlay.is-open {
+  display: flex;
+}
+
+.progress-track {
+  background: var(--border);
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+/* ── Toast ── */
+.toast {
+  background: var(--text);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ── 工具类 ── */
+.text-danger {
+  color: var(--danger);
+}
+
+.text-empty {
+  color: var(--muted);
+  padding: var(--space-md) 0;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .card {
+    padding: var(--space-md);
+  }
+
+  .card h2 {
+    font-size: 0.9375rem;
+  }
+
+  .app-nav-global {
+    padding: 0.625rem 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .step,
+  .job-list-item,
+  .resume-select-item,
+  tbody tr,
+  .sidebar-tab {
+    transition: none;
+  }
+}
