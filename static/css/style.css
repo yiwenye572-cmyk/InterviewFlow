@@ -330,10 +330,6 @@ th {
 }
 
 /* Home page — job history sidebar */
-.home-page.container {
-  max-width: 1100px;
-}
-
 .home-layout {
   display: grid;
   grid-template-columns: 260px 1fr;

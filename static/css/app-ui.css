@@ -14,6 +14,21 @@
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
+  --layout-max: 1440px;
+  --layout-max-xl: 1560px;
+}
+
+/* ── 宽屏容器（全站 app-page，与 interview-page 一致）── */
+body.app-page .container {
+  max-width: min(100%, var(--layout-max));
+  width: 100%;
+  padding: 0.875rem clamp(0.75rem, 2vw, 1.5rem) 1.5rem;
+}
+
+@media (min-width: 1600px) {
+  body.app-page .container {
+    max-width: min(100%, var(--layout-max-xl));
+  }
 }
 
 /* ── 页面标题区 ── */
@@ -251,6 +266,18 @@ tbody tr:hover {
 }
 
 /* ── 首页布局 ── */
+body.home-page .home-layout {
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+@media (min-width: 1280px) {
+  body.home-page .home-layout {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+}
+
 .home-layout {
   gap: var(--space-md);
 }
@@ -420,6 +447,14 @@ tbody tr:hover {
 
 /* ── 响应式 ── */
 @media (max-width: 640px) {
+  body.app-page .container {
+    padding: 0.75rem 0.625rem 1rem;
+  }
+
+  body.home-page .home-layout {
+    grid-template-columns: 1fr;
+  }
+
   .page-header h1 {
     font-size: 1.25rem;
   }

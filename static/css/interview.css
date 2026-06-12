@@ -1,10 +1,6 @@
 /* AI 模拟面试 — 宽屏布局，减少两侧留白 */
 
-body.interview-page .container {
-  max-width: min(100%, 1440px);
-  width: 100%;
-  padding: 0.875rem clamp(0.75rem, 2vw, 1.5rem) 1.25rem;
-}
+/* 容器宽度见 app-ui.css body.app-page .container */
 
 body.interview-page .page-header {
   margin-bottom: 0.875rem;
@@ -152,12 +148,7 @@ body.interview-page .agenda-comp-list {
   font-size: 0.8125rem;
 }
 
-/* 超宽屏进一步放宽 */
 @media (min-width: 1600px) {
-  body.interview-page .container {
-    max-width: min(100%, 1560px);
-  }
-
   body.interview-page .interview-grid {
     grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
     gap: 1.25rem;
@@ -192,10 +183,6 @@ body.interview-page .agenda-comp-list {
 }
 
 @media (max-width: 640px) {
-  body.interview-page .container {
-    padding: 0.75rem 0.625rem 1rem;
-  }
-
   body.interview-page .chat-meta {
     grid-template-columns: 1fr;
   }

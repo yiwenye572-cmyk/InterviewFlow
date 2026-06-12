@@ -1,9 +1,6 @@
 /* AI Interview Report — enterprise HR dashboard (report page only) */
 
-.report-page .container {
-  max-width: 1080px;
-  padding: 1.5rem 1.25rem 3rem;
-}
+/* 宽度由 app-ui.css body.app-page .container 统一控制 */
 
 .report-page-header {
   margin-bottom: 1.25rem;
@@ -502,10 +499,6 @@
 }
 
 @media (max-width: 640px) {
-  .report-page .container {
-    padding: 1rem 0.875rem 2rem;
-  }
-
   .report-hero {
     padding: 1.25rem;
   }
