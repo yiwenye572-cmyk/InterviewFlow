@@ -155,40 +155,4 @@ LangGraph 主路径：`InitPersona → StreamOpening → WaitAnswer → Evaluate
 | 报告 / 筛选耗时 | `screen_batch` / `report_async` 异步 Worker + 前端轮询进度 | L3 |
 | 语音集成 | 豆包 ASR WebSocket + TTS SSE；未配置 Key 时 503，文字模式不受影响 | L2 |
 
----
 
-## Docker 部署
-
-容器内 uvicorn 监听 `8000`，宿主机映射 **`127.0.0.1:8001`**。详见 [`服务器环境.md`](服务器环境.md)。
-
-**本地**
-
-```bash
-cp .env.example .env   # 填入 DASHSCOPE_API_KEY
-docker compose up -d --build
-curl http://127.0.0.1:8001/health   # {"status":"ok"}
-```
-
-**服务器（nainong.tech）**
-
-1. 同步代码至 `/var/www/airecruit`，配置 `.env`（`chmod 600`）：`DASHSCOPE_API_KEY`、`PUBLIC_BASE_PATH=/airecruit`、`DATABASE_URL=sqlite:////app/data/app.db`、`CHROMA_PATH=/app/data/chroma`
-2. `mkdir -p data && docker compose up -d --build`
-3. Nginx 追加（80 与 443 两个 `server {}` 内）：
-
-```nginx
-    location /airecruit/ {
-        proxy_pass http://127.0.0.1:8001/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-    }
-```
-
-4. `sudo nginx -t && sudo systemctl reload nginx` → 验证 `curl -s https://nainong.tech/airecruit/health`
-
-> 筛选批次与报告生成有进程内状态，保持 **单容器、单 worker**（`Dockerfile` 已配置 `--workers 1`），勿水平扩容多副本。
